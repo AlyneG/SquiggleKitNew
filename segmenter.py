@@ -155,6 +155,7 @@ def main():
 
                     # extract data from file
 
+                    # changed to a !single check instead of a multi check
                     if not args.single:
                         sigs = get_multi_fast5_signal(args, fast5_file)
                         for read in sigs:
@@ -195,7 +196,7 @@ def main():
                         sig = scale_outliers(sig, args)
                         # Do the segment detection
                         segs = get_segs(sig, args)
-                        if not segs.any():
+                        if not segs:
                             sys.stderr.write("no segments found: {}".format(fast5))
                             continue
                         # run tests on segments based on user question
@@ -295,6 +296,7 @@ def scale_outliers(squig, args):
     k = (squig > args.lim_low) & (squig < args.lim_hi)
     return squig[k]
 
+# same changes as in SquigglePlot
 def process_fast5(path, args):
     '''
     open fast5 and extract raw signal
@@ -331,6 +333,7 @@ def process_fast5(path, args):
         sig = []
     return sig
 
+# same changes as in SquigglePlot
 def get_multi_fast5_signal(args, read_filename):
     '''
     open multi fast5 files and extract information
@@ -348,6 +351,7 @@ def get_multi_fast5_signal(args, read_filename):
     # return signal/signals
     return signals
 
+# same changes as in SquigglePlot
 def read_multi_fast5(args, filename):
     '''
     read multifast5 file and return data
@@ -468,7 +472,7 @@ def test_segs(segs, args):
 
     return segs
 
-
+# changed from axvline to span
 def view_segs(segs, sig, args):
     '''
     View the segments on the squiggle
@@ -486,7 +490,6 @@ def view_segs(segs, sig, args):
     plt.plot(sig, color='k')
     plt.show()
     plt.clf()
-
 
 def convert_to_pA_numpy(d, digitisation, range, offset):
     raw_unit = range / digitisation

@@ -89,8 +89,6 @@ def main():
                         help="Individual fast5 file.")
     parser.add_argument("-r", "--readID",
                         help="Individual readID to extract from a multifast5 file")
-    #parser.add_argument("-m", "--multi",action="store_true",
-    #                   help="turn on multi-fast5 # depricate this and do better")
     parser.add_argument("--single",action="store_true",
                         help="single fast5 files")
     parser.add_argument("--head", action="store_true",
@@ -179,7 +177,7 @@ def main():
                         sigs = get_multi_fast5_signal(args, fast5_file)
                         for read in sigs:
                             sig = sigs[read]
-                            if not sig:
+                            if not sig.any():
                                 sys.stderr.write("main():data not extracted from read {}. Moving to next file: {}\n".format(read, fast5_file))
                                 continue
                             if N:
@@ -238,7 +236,6 @@ def main():
                 else:
                     view_sig(args, sig, readID)
         
-
     elif args.ind:
         # Do an OS detection here for windows (get from fast5_fetcher)
         fast5 = args.ind.split('/')[-1]
@@ -302,7 +299,7 @@ def scale_outliers(sig, args):
     k = (sig > args.lim_low) & (sig < args.lim_hi)
     return sig[k]
 
-
+# Changed to convert the signal to pA
 def get_multi_fast5_signal(args, read_filename):
     '''
     open multi fast5 files and extract information
@@ -327,6 +324,8 @@ def get_multi_fast5_signal(args, read_filename):
     # return signal/signals
     return signals
 
+# Changed to only store information of certain read when readID is provided
+# Also changed to extract information required for conversion
 def read_multi_fast5(args, filename):
     '''
     read multifast5 file and return data
@@ -355,7 +354,7 @@ def read_multi_fast5(args, filename):
                 sys.stderr.write("extract_fast5():failed to read readID: {}".format(read))
     return f5_dic
 
-
+# Changed to extract information required for conversion and to convert the signal
 def process_fast5(path, args):
     '''
     open fast5 and extract raw signal
@@ -428,6 +427,7 @@ def view_sig(args, sig, name, path=None):
         plt.show()
     plt.clf()
 
+# new conversion function (same as SquigglePull and segmenter)
 def convert_to_pA_numpy(d, digitisation, range, offset):
     raw_unit = range / digitisation
     return (d + offset) * raw_unit

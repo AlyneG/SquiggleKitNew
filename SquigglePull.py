@@ -87,8 +87,6 @@ def main():
                         help="single_fast5 files")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Engage higher output verbosity")
-    parser.add_argument("-s", "--scale", action="store_true",
-                        help="Scale signal output for comparison")
     parser.add_argument("-r", "--raw_signal", action="store_true",
                         help="No conversion to pA, raw signal is extracted instead")
     #parser.add_argument("--round", help="Value for num of decimal places converted signal is to be rounded to")
@@ -108,7 +106,7 @@ def main():
 
 
     # process fast5 files given top level path
-    # This should work for multi-fast5 too, push detect into extract_f5()
+    # Changed this section to work with new function
     for dirpath, dirnames, files in os.walk(args.path):
         for fast5 in files:
             if fast5.endswith('.fast5'):
@@ -124,88 +122,12 @@ def main():
                 else:
                     for read in data:
                         print_data(data[read], args, fast5)
+
     if args.verbose:
         end_time = time.time() - start_time
         sys.stderr.write("Time taken: {}\n".format(end_time))
 
-
-#def extract_f5(filename, args, batch=False):
-    '''
-    inputs:
-        filepath/name
-        optional:
-            Raw vs Events
-            batch flags
-    does:
-        open fast5 files, extract whole signal and read data
-    Returns:
-        dic for further processing
-
-    2 methods:
-        - Open one at a time (slow) - single thread
-        - Open batches at a time (fast) - paralellised
-
-
-    Takes the latest basecalled events table.
-    '''
-
-#    f5_dic = {'raw': [], 'seq': '', 'readID': '',
-#            'digitisation': 0.0, 'offset': 0.0, 'range': 0.0,
-#            'sampling_rate': 0.0}
-
-    # open fast5 file
-#    try:
-#        hdf = h5py.File(filename, 'r')
-#    except:
-#        traceback.print_exc()
-#        sys.stderr.write("extract_fast5():fast5 file failed to open: {}".format(filename))
-#        f5_dic = {}
-#        return f5_dic
-
-    # extract information
-#    try:
-#        c = list(hdf['Raw/Reads'].keys())
-#        for col in hdf['Raw/Reads/'][c[0]]['Signal'][()]:
-#            f5_dic['raw'].append(int(col))
-#        f5_dic['readID'] = hdf['Raw/Reads/'][c[0]].attrs['read_id'].decode()
-#        if not(args.raw_signal) or args.extra_info:
-#            f5_dic['digitisation'] = hdf['UniqueGlobalKey/channel_id'].attrs['digitisation']
-#            f5_dic['offset'] = hdf['UniqueGlobalKey/channel_id'].attrs['offset']
-#            f5_dic['range'] = float("{0:sud.2f}".format(hdf['UniqueGlobalKey/channel_id'].attrs['range']))
-#            f5_dic['sampling_rate'] = hdf['UniqueGlobalKey/channel_id'].attrs['sampling_rate']
-#    except:
-#        traceback.print_exc()
-#        sys.stderr.write("extract_fast5():failed to extract raw signal or fastq from {}".format(filename))
-#        f5_dic = {}
-
-#    return f5_dic
-
-#def read_multi_fast5(filename, args):
-    '''
-    read multifast5 file and return data
-    '''
-#    f5_dic = {}
-#    with h5py.File(filename, 'r') as hdf:
-#        for read in list(hdf.keys()):
-#            f5_dic[read] = {'raw': [], 'seq': '', 'readID': '', 'digitisation': 0.0,
-#                            'offset': 0.0, 'range': 0.0, 'sampling_rate': 0.0}
-
-#            try:
-#                for col in hdf[read]['Raw/Signal'][()]:
-#                    f5_dic[read]['raw'].append(int(col))
-#                f5_dic[read]['readID'] = hdf[read]['Raw'].attrs['read_id'].decode()
-
-#                if not(args.raw_signal) or args.extra_info:
-#                    f5_dic[read]['digitisation'] = hdf[read]['channel_id'].attrs['digitisation']
-#                    f5_dic[read]['offset'] = hdf[read]['channel_id'].attrs['offset']
-#                    f5_dic[read]['range'] = float("{0:.2f}".format(hdf[read]['channel_id'].attrs['range']))
-#                    f5_dic[read]['sampling_rate'] = hdf[read]['channel_id'].attrs['sampling_rate']
-#                
-#            except:
-#                traceback.print_exc()
-#                sys.stderr.write("extract_fast5():failed to read readID: {}".format(read))
-#    return f5_dic
-
+# Added this function by combining the separate extraction functions for single and multi, and the pull function
 def extract_f5_all(filename, args):
     '''
     inputs:
@@ -284,58 +206,6 @@ def extract_f5_all(filename, args):
                     sys.stderr.write("extract_fast5_all():failed to read readID: {}".format(read))
     return f5_dic
 
-'''
-def pull_target(data, args, min_length=50, paf=None):
-    
-    Pull out target region from data.
-
-    inputs:
-        - data - dictionary containing reads
-        - target - pos1: 20,110 - event/raw positions
-        - target_type - pos1
-
-    does:
-        ...explain methods...
-
-    Returns:
-        - Regions of interest labelled by read_id/filename
-
-    dicf5_dic = {'events': [], 'moves': [], 'seq': '', 'readID': ''}
-    
-    default = []
-    region = []
-
-    signal = np.array(data['raw'])
-    if args.scale:
-        signal = scale_data(signal)
-    target = str(len(signal))
-
-    region.append(target)
-    region.append(signal)
-
-    if region:
-        return region
-    else:
-        sys.stderr.write("pull_target():Something went wrong. Region not found")
-        return default
-'''
-
-def scale_data(data):
-    '''
-    Scale shift and scale for comparisons
-    '''
-    try:
-        scaled_data = sklearn.preprocessing.scale(data,
-                                                  axis=0,
-                                                  with_mean=True,
-                                                  with_std=True,
-                                                  copy=True)
-    except:
-        traceback.print_exc()
-        sys.stderr.write("scale_data():Something went wrong, failed to scale data")
-        return 0
-    return scaled_data
-
 #def convert_to_pA(d):
     '''
     convert raw signal data to pA using digitisation, offset, and range
@@ -354,10 +224,12 @@ def scale_data(data):
 #        new_raw.append("{0:.2f}".format(round(j,2)))
 #    return new_raw
 
+# new numpy version of convert function
 def convert_to_pA_numpy(d, digitisation, range, offset):
     raw_unit = range / digitisation
     return (d + offset) * raw_unit
 
+# new function created to reduce redundancy of code
 def print_data(data, args, fast5):
     if args.scale:
         data['raw'] = scale_data(data['raw'])
