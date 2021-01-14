@@ -79,14 +79,12 @@ def main():
     group = parser.add_mutually_exclusive_group()
     #   need to make it so that raw_signal flag cannot be applied with the signal file
     #   currently cannot support it unless output file contains digitisation, range and offest values (extra info mode)
-    group.add_argument("-f", "--f5f",
-                        help="File list of fast5 paths - Single fast5 only")
     group.add_argument("-p", "--f5_path",
                         help="Fast5 top dir")
     group.add_argument("-s", "--signal",
                         help="Extracted signal file from SquigglePull")
-    group.add_argument("-i", "--ind",
-                        help="Individual fast5 file.")
+    group.add_argument("-i", "--ind", nargs='+', 
+                        help="Individual fast5 files.")
     parser.add_argument("-r", "--readID",
                         help="Individual readID to extract from a multifast5 file")
     parser.add_argument("--single",action="store_true",
@@ -139,34 +137,7 @@ def main():
     if args.head:
         head = True
 
-    if args.f5f:
-        # file list of fast5 files.
-        # fast5_name\tquality_score
-        # not using the second column atm
-        args.single = True
-        with open(args.f5f, 'rt') as sz:
-            for l in sz:
-                if head:
-                    head = False
-                    continue
-                l = l.strip('\n')
-                l = l.split('\t')[0]
-                path = l
-                l = l.split('/')
-                fast5 = l[-1]
-                sig = process_fast5(path, args)
-                if not sig:
-                    continue
-                if N:
-                    sig = sig[:N]
-                elif N1 or N2:
-                    sig = sig[N1:N2]
-                sig = np.array(sig, dtype=float)
-                sig = scale_outliers(sig, args)
-                # output sections
-                view_sig(args, sig, fast5)
-
-    elif args.f5_path:
+    if args.f5_path:
         # process fast5 files given top level path
         for dirpath, dirnames, files in os.walk(args.f5_path):
             for fast5 in files:
@@ -237,43 +208,45 @@ def main():
                     view_sig(args, sig, readID)
         
     elif args.ind:
+        files = args.ind
+        for fast5 in files:
         # Do an OS detection here for windows (get from fast5_fetcher)
-        fast5 = args.ind.split('/')[-1]
-        # extract data from file
-        sig = None
-        if not args.single:
-            sigs = get_multi_fast5_signal(args, args.ind)
-            if args.readID:
-            # if readID is provided, only get data with matching readID
-                sig = sigs[args.readID]
-                read = args.readID
+            # extract data from file
+            sig = None
+            if not args.single:
+                sigs = get_multi_fast5_signal(args, fast5)
+                if args.readID:
+                # if readID is provided, only get data with matching readID
+                    sig = sigs[args.readID]
+                    read = args.readID
+                else:
+                    for read in sigs:
+                        sig = sigs[read]
+                        if N:
+                            sig = sig[:N]
+                        elif N1 or N2:
+                            sig = sig[N1:N2]
+                        sig = np.array(sig, dtype=float)
+                        sig = scale_outliers(sig, args)
+                        view_sig(args, sig, read)
+                    sys.exit(0)
             else:
-                for read in sigs:
-                    sig = sigs[read]
-                    if N:
-                        sig = sig[:N]
-                    elif N1 or N2:
-                        sig = sig[N1:N2]
-                    sig = np.array(sig, dtype=float)
-                    sig = scale_outliers(sig, args)
-                    view_sig(args, sig, read)
-                sys.exit(0)
-        else:
-            sig = process_fast5(args.ind, args)
-            read = fast5
+                sig = process_fast5(fast5, args)
+                fast5 = fast5.split('/')[-1]
+                read = fast5
 
-        if not sig.any():
-            sys.stderr.write("main():data not extracted: {}".format(args.ind))
-            parser.print_help(sys.stderr)
-            sys.exit(1)
-        if N:
-            sig = sig[:N]
-        elif N1 or N2:
-            sig = sig[N1:N2]
+            if not sig.any():
+                sys.stderr.write("main():data not extracted: {}".format(args.ind))
+                parser.print_help(sys.stderr)
+                sys.exit(1)
+            if N:
+                sig = sig[:N]
+            elif N1 or N2:
+                sig = sig[N1:N2]
 
-        sig = np.array(sig, dtype=float)
-        sig = scale_outliers(sig, args)
-        view_sig(args, sig, read)
+            sig = np.array(sig, dtype=float)
+            sig = scale_outliers(sig, args)
+            view_sig(args, sig, read)
 
     else:
         sys.stderr.write("Unknown file or path input")
