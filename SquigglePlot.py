@@ -157,7 +157,7 @@ def main():
                                 sig = sig[N1:N2]
                             sig = np.array(sig, dtype=float)
                             sig = scale_outliers(sig, args)
-                            view_sig(args, sig, read)
+                            view_sig(args, sig, read, fast5_file)
                     else:
                         # extract data from file
                         sig = process_fast5(fast5_file, args)
@@ -170,7 +170,7 @@ def main():
                             sig = sig[N1:N2]
                         sig = np.array(sig, dtype=float)
                         sig = scale_outliers(sig, args)
-                        view_sig(args, sig, fast5)
+                        view_sig(args, sig, fast5, fast5_file)
 
     elif args.signal:
         # signal file, from squigglepull
@@ -203,9 +203,9 @@ def main():
                     sig = sig[N1:N2]
                 sig = scale_outliers(sig, args)
                 if args.single:
-                    view_sig(args, sig, fast5)
+                    view_sig(args, sig, fast5, fast5)
                 else:
-                    view_sig(args, sig, readID)
+                    view_sig(args, sig, readID, fast5)
         
     elif args.ind:
         files = args.ind
@@ -228,12 +228,11 @@ def main():
                             sig = sig[N1:N2]
                         sig = np.array(sig, dtype=float)
                         sig = scale_outliers(sig, args)
-                        view_sig(args, sig, read)
+                        view_sig(args, sig, read, fast5)
                     sys.exit(0)
             else:
                 sig = process_fast5(fast5, args)
-                fast5 = fast5.split('/')[-1]
-                read = fast5
+                read = fast5.split('/')[-1]
 
             if not sig.any():
                 sys.stderr.write("main():data not extracted: {}".format(args.ind))
@@ -246,7 +245,7 @@ def main():
 
             sig = np.array(sig, dtype=float)
             sig = scale_outliers(sig, args)
-            view_sig(args, sig, read)
+            view_sig(args, sig, read, fast5)
 
     else:
         sys.stderr.write("Unknown file or path input")
@@ -364,7 +363,7 @@ def process_fast5(path, args):
         sig = []
     return sig
 
-def view_sig(args, sig, name, path=None):
+def view_sig(args, sig, name, file, path=None):
     '''
     View the squiggle
     '''
@@ -385,10 +384,10 @@ def view_sig(args, sig, name, path=None):
     else:
         raw = args.raw_signal
     if raw:
-        plt.title("Raw signal for:   {}".format(name))
+        plt.title("Raw signal for:   {} \n File: {}".format(name, file))
         plt.ylabel("Current - Not scaled")
     else:
-        plt.title("Signal for:   {}".format(name))
+        plt.title("Signal for:   {} \n File: {}".format(name, file))
         plt.ylabel("Current (pA)")       
 
 
