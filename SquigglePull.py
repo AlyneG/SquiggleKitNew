@@ -5,7 +5,6 @@ import traceback
 import numpy as np
 import h5py
 import time
-import sklearn.preprocessing
 
 '''
     SquigglePull
@@ -83,8 +82,8 @@ def main():
     # arguments
     parser.add_argument("-p", "--path",
                         help="Top directory path of fast5 files")
-    parser.add_argument("--single", action="store_true",
-                        help="single_fast5 files")
+    #parser.add_argument("--single", action="store_true",
+    #                    help="single_fast5 files")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Engage higher output verbosity")
     parser.add_argument("-r", "--raw_signal", action="store_true",
@@ -112,12 +111,12 @@ def main():
             if fast5.endswith('.fast5'):
                 fast5_file = os.path.join(dirpath, fast5)
                 # extract data from file
-                data = extract_f5_all(fast5_file, args)
+                data, single = extract_f5_all(fast5_file, args)
                 if not data:
                     sys.stderr.write("main():data not extracted from {}. Moving to next file.".format(fast5_file))
                     continue
                 # print data
-                if args.single:
+                if single:
                     print_data(data, args, fast5)
                 else:
                     for read in data:
@@ -140,8 +139,15 @@ def extract_f5_all(filename, args):
     '''
     f5_dic = {}
     with h5py.File(filename, 'r') as hdf:
+        reads = list(hdf.keys())
+        if 'read' not in reads[1]:
+            sys.stderr.write("{} detected as a single fast5 file\n".format(filename)) 
+            single = True
+        else:
+            sys.stderr.write("{} detected as a multi fast5 file\n".format(filename))
+            single = False
         # single fast5 files
-        if args.single:
+        if single:
             f5_dic = {'raw': [], 'seq': '', 'readID': '',
                     'digitisation': 0.0, 'offset': 0.0, 'range': 0.0,
                     'sampling_rate': 0.0}
@@ -174,7 +180,7 @@ def extract_f5_all(filename, args):
 
         # multi fast5 files
         else:
-            for read in list(hdf.keys()):
+            for read in reads:
                 f5_dic[read] = {'raw': [], 'seq': '', 'readID': '', 
                                 'digitisation': 0.0, 'offset': 0.0, 'range': 0.0,
                                 'sampling_rate': 0.0}
@@ -204,8 +210,9 @@ def extract_f5_all(filename, args):
                 except:
                     traceback.print_exc()
                     sys.stderr.write("extract_fast5_all():failed to read readID: {}".format(read))
-    return f5_dic
 
+    return f5_dic, single
+    
 #def convert_to_pA(d):
     '''
     convert raw signal data to pA using digitisation, offset, and range
@@ -231,8 +238,6 @@ def convert_to_pA_numpy(d, digitisation, range, offset):
 
 # new function created to reduce redundancy of code
 def print_data(data, args, fast5):
-    if args.scale:
-        data['raw'] = scale_data(data['raw'])
 
     ar = []
     for i in data['raw']:
