@@ -88,11 +88,9 @@ def main():
                         help="Engage higher output verbosity")
     parser.add_argument("-r", "--raw_signal", action="store_true",
                         help="No conversion to pA, raw signal is extracted instead")
-    #parser.add_argument("--round", help="Value for num of decimal places converted signal is to be rounded to")
     parser.add_argument("-i", "--extra_info", action="store_true",
                         help="Print extra information used for signal conversion and in methylation calling - nanopolish/f5c")
-    # parser.add_argument("-a", "--paf",
-    #                     help="paf alignment file for nt approach - Benchmarking")
+
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
@@ -212,24 +210,6 @@ def extract_f5_all(filename, args):
                     sys.stderr.write("extract_fast5_all():failed to read readID: {}".format(read))
 
     return f5_dic, single
-    
-#def convert_to_pA(d):
-    '''
-    convert raw signal data to pA using digitisation, offset, and range
-    float raw_unit = range / digitisation;
-    for (int32_t j = 0; j < nsample; j++) {
-        rawptr[j] = (rawptr[j] + offset) * raw_unit;
-    }
-    '''
-#    digitisation = d['digitisation']
-#    range = d['range']
-#    offset = d['offset']
-#    raw_unit = range / digitisation
-#    new_raw = []
-#    for i in d['raw']:
-#        j = (i + offset) * raw_unit
-#        new_raw.append("{0:.2f}".format(round(j,2)))
-#    return new_raw
 
 # new numpy version of convert function
 def convert_to_pA_numpy(d, digitisation, range, offset):
