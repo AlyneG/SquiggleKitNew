@@ -16,8 +16,7 @@ matplotlib.rcParams['figure.dpi'] = 80
 # matplotlib.rcParams['savefig.dpi'] = 300
 import numpy as np
 import h5py
-# import sklearn.preprocessing
-# import pandas as pd
+
 '''
 
     James M. Ferguson (j.ferguson@garvan.org.au)
@@ -120,6 +119,21 @@ def main():
         parser.print_help(sys.stderr)
         sys.exit(1)
 
+    # check arguments are suitable and alert if not
+    if args.raw_signal and args.signal:
+        sys.stderr.write("Cannot convert the signal file. Will plot the values provided as is.\n")
+
+    if args.save_path and not args.save:
+        sys.stderr.write("Please provide a save suffix e.g. test.png using the --save argument.\n")
+        sys.exit(1)
+
+    if args.readID and args.single:
+        sys.stderr.write("Run the program with the -i flag and supply only the single fast5 file with the read desired.\nIf you are unsure which fast5 file contains the desired read, use fast5fetcher to extract it.\n")
+        sys.exit(1)
+
+    if args.no_show and not args.save:
+        sys.stderr.write("With the current settings, no output will be produced.\nEither remove the no_show flag, or select to save by providing a suffix to add to the created files using --save.\n")
+        sys.exit(1)
 
     matplotlib.rcParams['savefig.dpi'] = args.dpi
 
@@ -217,7 +231,7 @@ def main():
             if args.single:
                 sig = process_fast5(fast5, args)
                 read = fast5.split('/')[-1]
-                if not sig:
+                if not sig.any():
                     sys.stderr.write("main():data not extracted: {}".format(args.ind))
                     parser.print_help(sys.stderr)
                     sys.exit(1)
@@ -227,7 +241,7 @@ def main():
                     sig = sig[N1:N2]
 
                 sig = np.array(sig, dtype=float)
-                sig = scale_outliers(sig, args)
+                sig = scale_outliers(vimsig, args)
                 view_sig(args, sig, read, fast5)
 
             else:
@@ -386,8 +400,6 @@ def view_sig(args, sig, name, file, path=None):
     # plt.tight_layout()
     plt.autoscale()
     plt.xlabel("")
-    # print(sig.dtype)
-    # print(sig.dtype == float64)
     
     if args.signal:
         if sig.dtype == float:
