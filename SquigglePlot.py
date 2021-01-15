@@ -79,16 +79,17 @@ def main():
     group = parser.add_mutually_exclusive_group()
     #   need to make it so that raw_signal flag cannot be applied with the signal file
     #   currently cannot support it unless output file contains digitisation, range and offest values (extra info mode)
+
     group.add_argument("-p", "--f5_path",
                         help="Fast5 top dir")
     group.add_argument("-s", "--signal",
-                        help="Extracted signal file from SquigglePull")
+                        help="Extracted signal file from SquigglePull. Currently not compatible with conversion")
     group.add_argument("-i", "--ind", nargs='+', 
-                        help="Individual fast5 files.")
+                        help="Individual fast5 files")
     parser.add_argument("-r", "--readID",
                         help="Individual readID to extract from a multifast5 file")
     parser.add_argument("--single",action="store_true",
-                        help="single fast5 files")
+                        help="single fast5 files.")
     parser.add_argument("--head", action="store_true",
                         help="Header present in signal or flat file")
     parser.add_argument("--raw_signal",action="store_true",
@@ -213,12 +214,41 @@ def main():
         # Do an OS detection here for windows (get from fast5_fetcher)
             # extract data from file
             sig = None
-            if not args.single:
+            if args.single:
+                sig = process_fast5(fast5, args)
+                read = fast5.split('/')[-1]
+                if not sig:
+                    sys.stderr.write("main():data not extracted: {}".format(args.ind))
+                    parser.print_help(sys.stderr)
+                    sys.exit(1)
+                if N:
+                    sig = sig[:N]
+                elif N1 or N2:
+                    sig = sig[N1:N2]
+
+                sig = np.array(sig, dtype=float)
+                sig = scale_outliers(sig, args)
+                view_sig(args, sig, read, fast5)
+
+            else:
+                sys.stderr.write("Looking at the file {}\n".format(fast5))
                 sigs = get_multi_fast5_signal(args, fast5)
                 if args.readID:
                 # if readID is provided, only get data with matching readID
                     sig = sigs[args.readID]
                     read = args.readID
+                    if not sig.any():
+                        sys.stderr.write("main():data not extracted: {}".format(args.ind))
+                        parser.print_help(sys.stderr)
+                        sys.exit(1)
+                    if N:
+                        sig = sig[:N]
+                    elif N1 or N2:
+                        sig = sig[N1:N2]
+
+                    sig = np.array(sig, dtype=float)
+                    sig = scale_outliers(sig, args)
+                    view_sig(args, sig, read, fast5)
                 else:
                     for read in sigs:
                         sig = sigs[read]
@@ -228,24 +258,7 @@ def main():
                             sig = sig[N1:N2]
                         sig = np.array(sig, dtype=float)
                         sig = scale_outliers(sig, args)
-                        view_sig(args, sig, read, fast5)
-                    sys.exit(0)
-            else:
-                sig = process_fast5(fast5, args)
-                read = fast5.split('/')[-1]
-
-            if not sig.any():
-                sys.stderr.write("main():data not extracted: {}".format(args.ind))
-                parser.print_help(sys.stderr)
-                sys.exit(1)
-            if N:
-                sig = sig[:N]
-            elif N1 or N2:
-                sig = sig[N1:N2]
-
-            sig = np.array(sig, dtype=float)
-            sig = scale_outliers(sig, args)
-            view_sig(args, sig, read, fast5)
+                        view_sig(args, sig, read, fast5)            
 
     else:
         sys.stderr.write("Unknown file or path input")
@@ -387,7 +400,7 @@ def view_sig(args, sig, name, file, path=None):
         plt.title("Raw signal for:   {} \n File: {}".format(name, file))
         plt.ylabel("Current - Not scaled")
     else:
-        plt.title("Signal for:   {} \n File: {}".format(name, file))
+        plt.title("Signal for:   {} \nls File: {}".format(name, file))
         plt.ylabel("Current (pA)")       
 
 
