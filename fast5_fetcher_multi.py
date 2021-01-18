@@ -661,18 +661,26 @@ def m2s(f5_path, read_list, save_path):
         for S in result[1:]:
            out_sum.write("{}\t{}\n".format(M,S))
 
-def s2m(f5_path, read_list, save_path):
+def s2m(f5_path, save_path, output_file, target_compression):
     '''
     Combine single fast5 files into 1 multi fast5 file
-    TODO: sort out the file mapping file writing
     '''
-
-# batch_convert_single_to_multi(input_path, output_folder, filename_base, batch_size, threads, recursive, follow_symlinks, target_compression)
-    result = convert_multi_to_single(f5_path, read_list, save_path)
+    filenames = []
+    results = []
+    output = None
+    
+    for dirpath, dirnames, files in os.walk(f5_path):
+        for fast5 in files:
+            if fast5.endswith('.fast5'):
+                filenames.append(os.path.join(dirpath, fast5))
+    if filenames:
+        results, output = create_multi_read_file(filenames, os.path.join(save_path, output_file), target_compression)
+    
     with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
-        M = result[0]
-        for S in result[1:]:
-           out_sum.write("{}\t{}\n".format(S, M))
+        # get readIDs from sequencing summary?
+        # get readIDs from hdf read?
+        for S in results:
+           out_sum.write("{}\t{}\n".format(output_file, S))
 
 def multi_f5_handler(args, m_paths, filenames):
     '''

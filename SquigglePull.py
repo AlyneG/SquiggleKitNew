@@ -82,8 +82,7 @@ def main():
     # arguments
     parser.add_argument("-p", "--path",
                         help="Top directory path of fast5 files")
-    #parser.add_argument("--single", action="store_true",
-    #                    help="single_fast5 files")
+    parser.add_argument("-t", "--type", action="store", default="auto", choices=["auto", "single", "multi"], help="Specify the type of files provided. Default is autodetection which enables a mix of single and multifast5 files.")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Engage higher output verbosity")
     parser.add_argument("-r", "--raw_signal", action="store_true",
@@ -98,9 +97,12 @@ def main():
         sys.exit(1)
 
     if args.verbose:
-        sys.stderr.write("Verbose mode on. Starting timer")
+        sys.stderr.write("Verbose mode on. Starting timer.\n")
         start_time = time.time()
 
+    if not os.path.isdir(args.path):
+        sys.stderr.write("The provided path {} is not an existing directory.\n".format(args.path))
+        sys.exit(1)
 
     # process fast5 files given top level path
     # Changed this section to work with new function
@@ -136,14 +138,23 @@ def extract_f5_all(filename, args):
         dic for further processing/printing
     '''
     f5_dic = {}
+    single = True
     with h5py.File(filename, 'r') as hdf:
-        reads = list(hdf.keys())
-        if 'read' not in reads[1]:
-            sys.stderr.write("{} detected as a single fast5 file\n".format(filename)) 
-            single = True
-        else:
-            sys.stderr.write("{} detected as a multi fast5 file\n".format(filename))
+
+        if args.type == "auto":
+            reads = list(hdf.keys())
+            if 'read' not in reads[1]:
+                if args.verbose:
+                    sys.stderr.write("{} detected as a single fast5 file\n".format(filename)) 
+                single = True
+            else:
+                if args.verbose:
+                    sys.stderr.write("{} detected as a multi fast5 file\n".format(filename))
+                single = False
+        elif args.type == "multi":
+            reads = list(hdf.keys())
             single = False
+
         # single fast5 files
         if single:
             f5_dic = {'raw': [], 'seq': '', 'readID': '',
