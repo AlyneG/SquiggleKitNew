@@ -5,6 +5,11 @@ import subprocess
 import traceback
 import argparse
 import platform
+from ont_fast5_api.conversion_tools import single_to_multi_fast5
+from ont_fast5_api.conversion_tools.single_to_multi_fast5 import batch_convert_single_to_multi
+# batch_conver_single_to_multi(input_path, output_folder, filename_base, batch_size, threads, recursive, follow_symlinks, target_compression)
+from ont_fast5_api.multi_fast5 import MultiFast5File
+from ont_fast5_api.multi_fast5 import Fast5File
 for i in sys.argv:
     if i == '-m':
         from ont_fast5_api.conversion_tools import multi_to_single_fast5
@@ -658,9 +663,11 @@ def m2s(f5_path, read_list, save_path):
 
 def s2m(f5_path, read_list, save_path):
     '''
-    Open a single multi-fast5 file and extract 1 single read
+    Combine single fast5 files into 1 multi fast5 file
     TODO: sort out the file mapping file writing
     '''
+
+# batch_convert_single_to_multi(input_path, output_folder, filename_base, batch_size, threads, recursive, follow_symlinks, target_compression)
     result = convert_multi_to_single(f5_path, read_list, save_path)
     with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
         M = result[0]
