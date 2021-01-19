@@ -696,28 +696,39 @@ def multi_f5_handler(args, m_paths, filenames):
         os.mkdir("fast5_fetcher_temp")
         tmp_path = os.path.abspath("fast5_fetcher_temp")
         for p, f in m_paths:
+            print("p: {}".format(p))
+            print("f: {}".format(f))
             readIDs = filenames[f]
             length = len(readIDs)
             count += length
             if count >= threshold:
                 # find how many more to add
                 index = length - (count - threshold)
+                print("readIDs: {}".format(readIDs))
+                print("count: {}".format(count))
+                print("index: {}".format(index))
+                print("length: {}".format(length))
                 # add the reads that fit
                 convert_multi_to_single(p, readIDs[:index], tmp_path)
                 # convert to multi
                 s2m(tmp_path, save_path, outfile, None)
-                # write the mapping file
+                # write to the mapping file
                 with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
                     for ID in readIDs[:index]:
                         out_sum.write("{}\t{}\n".format(outfile, ID))
                 del readIDs[:index]
                 shutil.rmtree(tmp_path)
+
                 # if the number of reads left is enough to create another complete file, do so until you cannot
-                while len(readIDs) > threshold:
+                while len(readIDs) >= threshold:
+                    print("readIDs: {}".format(readIDs))
+                    print("count: {}".format(count))
+                    print("index: {}".format(index))
+                    print("length: {}".format(length))
                     # create a new temp folder
                     os.mkdir("fast5_fetcher_temp")
                     tmp_path = os.path.abspath("fast5_fetcher_temp")
-                    # add overflow reads to new folder and set values
+                    # add reads to new folder and create a new multi file from it
                     i += 1
                     outfile = "multi"+str(i)
                     convert_multi_to_single(p, readIDs[:threshold], tmp_path)
@@ -726,8 +737,10 @@ def multi_f5_handler(args, m_paths, filenames):
                         for ID in readIDs[:threshold]:
                             out_sum.write("{}\t{}\n".format(outfile, ID))
                     del readIDs[:threshold]
+                    #delete temp folder
                     shutil.rmtree(tmp_path)
-                # create a new temp folder
+
+                # excess reads that are not enough to create a new file go in a new temp folder
                 os.mkdir("fast5_fetcher_temp")
                 tmp_path = os.path.abspath("fast5_fetcher_temp")
                 i += 1
