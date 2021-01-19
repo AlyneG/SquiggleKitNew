@@ -696,18 +696,12 @@ def multi_f5_handler(args, m_paths, filenames):
         os.mkdir("fast5_fetcher_temp")
         tmp_path = os.path.abspath("fast5_fetcher_temp")
         for p, f in m_paths:
-            print("p: {}".format(p))
-            print("f: {}".format(f))
             readIDs = filenames[f]
             length = len(readIDs)
             count += length
             if count >= threshold:
                 # find how many more to add
                 index = length - (count - threshold)
-                print("readIDs: {}".format(readIDs))
-                print("count: {}".format(count))
-                print("index: {}".format(index))
-                print("length: {}".format(length))
                 # add the reads that fit
                 convert_multi_to_single(p, readIDs[:index], tmp_path)
                 # convert to multi
@@ -721,10 +715,6 @@ def multi_f5_handler(args, m_paths, filenames):
 
                 # if the number of reads left is enough to create another complete file, do so until you cannot
                 while len(readIDs) >= threshold:
-                    print("readIDs: {}".format(readIDs))
-                    print("count: {}".format(count))
-                    print("index: {}".format(index))
-                    print("length: {}".format(length))
                     # create a new temp folder
                     os.mkdir("fast5_fetcher_temp")
                     tmp_path = os.path.abspath("fast5_fetcher_temp")
