@@ -5,8 +5,9 @@ import subprocess
 import traceback
 import argparse
 import platform
+import shutil
 from ont_fast5_api.conversion_tools import single_to_multi_fast5
-from ont_fast5_api.conversion_tools.single_to_multi_fast5 import batch_convert_single_to_multi
+from ont_fast5_api.conversion_tools.single_to_multi_fast5 import create_multi_read_file
 # batch_conver_single_to_multi(input_path, output_folder, filename_base, batch_size, threads, recursive, follow_symlinks, target_compression)
 from ont_fast5_api.multi_fast5 import MultiFast5File
 from ont_fast5_api.multi_fast5 import Fast5File
@@ -151,6 +152,7 @@ def main():
     if args.multi_f5:
         if args.verbose:
             sys.stderr.write("Multi-fast5 mode detected in mode: {}\n".format(args.f5_format))
+
     if args.seq_sum_1D2:
         if args.verbose:
             sys.stderr.write("1D^2 sequencing summary mode on. Getting {} read(s)\n".format(args.seq_sum_1D2))
@@ -668,19 +670,16 @@ def s2m(f5_path, save_path, output_file, target_compression):
     filenames = []
     results = []
     output = None
-    
+    output_file = output_file + ".fast5"
+    if target_compression == "gzip":
+        output_file = output_file + ".gz"
+        
     for dirpath, dirnames, files in os.walk(f5_path):
         for fast5 in files:
             if fast5.endswith('.fast5'):
                 filenames.append(os.path.join(dirpath, fast5))
     if filenames:
         results, output = create_multi_read_file(filenames, os.path.join(save_path, output_file), target_compression)
-    
-    with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
-        # get readIDs from sequencing summary?
-        # get readIDs from hdf read?
-        for S in results:
-           out_sum.write("{}\t{}\n".format(output_file, S))
 
 def multi_f5_handler(args, m_paths, filenames):
     '''
@@ -689,10 +688,76 @@ def multi_f5_handler(args, m_paths, filenames):
     save_path = args.output
 
     if args.f5_format == "mm":
-        sys.stderr.write("multi to multi currently not implemented. Coming soon. Exiting\n")
-        # read_multi
-        # write_multi
-        sys.exit(2)
+        threshold = 2
+        count = 0
+        index = 0
+        i = 0
+        outfile = "multi"+str(i)
+        os.mkdir("fast5_fetcher_temp")
+        tmp_path = os.path.abspath("fast5_fetcher_temp")
+        for p, f in m_paths:
+            readIDs = filenames[f]
+            length = len(readIDs)
+            count += length
+            if count >= threshold:
+                # find how many more to add
+                index = length - (count - threshold)
+                # add the reads that fit
+                convert_multi_to_single(p, readIDs[:index], tmp_path)
+                # convert to multi
+                s2m(tmp_path, save_path, outfile, None)
+                # write the mapping file
+                with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
+                    for ID in readIDs[:index]:
+                        out_sum.write("{}\t{}\n".format(outfile, ID))
+                del readIDs[:index]
+                shutil.rmtree(tmp_path)
+                # if the number of reads left is enough to create another complete file, do so until you cannot
+                while len(readIDs) > threshold:
+                    # create a new temp folder
+                    os.mkdir("fast5_fetcher_temp")
+                    tmp_path = os.path.abspath("fast5_fetcher_temp")
+                    # add overflow reads to new folder and set values
+                    i += 1
+                    outfile = "multi"+str(i)
+                    convert_multi_to_single(p, readIDs[:threshold], tmp_path)
+                    s2m(tmp_path, save_path, outfile, None)
+                    with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
+                        for ID in readIDs[:threshold]:
+                            out_sum.write("{}\t{}\n".format(outfile, ID))
+                    del readIDs[:threshold]
+                    shutil.rmtree(tmp_path)
+                # create a new temp folder
+                os.mkdir("fast5_fetcher_temp")
+                tmp_path = os.path.abspath("fast5_fetcher_temp")
+                i += 1
+                outfile = "multi"+str(i)
+                # add remaining reads, if any, to a new folder
+                if readIDs:
+                    convert_multi_to_single(p, readIDs, tmp_path)
+                    with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
+                        for ID in readIDs:
+                            out_sum.write("{}\t{}\n".format(outfile, ID))
+                count = len(readIDs)
+            else:
+                # add reads to folder
+                convert_multi_to_single(p, readIDs, tmp_path)
+                # add details to mapping file
+                with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
+                    for ID in readIDs:
+                        out_sum.write("{}\t{}\n".format(outfile, ID))
+
+        # check if there are remaining files
+        if os.listdir(tmp_path):
+            # convert remaining files to multi
+            s2m(tmp_path, save_path, outfile, None)
+            # write the mapping file
+            with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
+                for ID in readIDs[index:]:
+                    out_sum.write("{}\t{}\n".format(outfile, ID))
+        # remove temp folder
+        shutil.rmtree(tmp_path)
+
     elif args.f5_format == "ms":
         with open(os.path.join(args.output, "filename_mapping.txt"), 'w') as out_sum:
             out_sum.write("multi_read_file\tsingle_read_file\n")
@@ -706,7 +771,25 @@ def multi_f5_handler(args, m_paths, filenames):
 
     elif args.f5_format == "sm":
         # this may be be best done by first doing single sorting, then pushing into multi files
-        sys.stderr.write("single to multi currently not implemented. Coming soon. Exiting\n")
+        '''
+        for p, f in m_paths:
+            read_list.extend(filenames[f])
+
+        count = 0
+        while read_list:
+            #make temp folder and store first files with
+            os.mkdir("fast5_fetcher_temp")
+            tmp_path = os.path.abspath("fast5_fetcher_temp")
+            result = convert_multi_to_single(f5_path, read_list[4000:], tmp_path)
+            s2m(tmp_path, save_path, "multi"+count, None)
+            count++
+            del read_list[:4000]
+            shutil.rmtree(tmp_path)
+            with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
+            for ID in read_list[4000:]:
+               out_sum.write("{}\t{}\n".format(output_file, ID))
+        '''
+        sys.stderr.write("NOT YET IMPLEMENTED.\n")
         sys.exit(2)
     else:
         sys.stderr.write("Something went wrong, check --f5_format: {}\n".format(args.f5_format))

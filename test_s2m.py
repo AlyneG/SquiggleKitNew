@@ -1,17 +1,18 @@
 import os
 import sys
 from ont_fast5_api.conversion_tools import single_to_multi_fast5
-from ont_fast5_api.conversion_tools.single_to_multi_fast5 import batch_convert_single_to_multi
 from ont_fast5_api.conversion_tools.single_to_multi_fast5 import create_multi_read_file
 # batch_conver_single_to_multi(input_path, output_folder, filename_base, batch_size, threads, recursive, follow_symlinks, target_compression)
 from ont_fast5_api.multi_fast5 import MultiFast5File
 from ont_fast5_api.multi_fast5 import Fast5File
+import shutil
 
 
 def main():
-    s2m('./fast5', './s2m_fast5/', 'output.fast5', None)
-    s2m('./fast5', './s2m_fast5/', 'output2.fast5', None)
-
+    os.mkdir("fast5_fetcher_temp")
+    tmp_path = os.path.abspath("fast5_fetcher_temp")
+    s2m('./fast5', tmp_path, 'output.fast5', None)
+    s2m('./fast5', tmp_path, 'output2.fast5', None)
 
 def s2m(f5_path, save_path, output_file, target_compression):
     '''
