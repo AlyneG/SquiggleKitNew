@@ -110,8 +110,8 @@ def main():
                         help="index.gz file mapping fast5 files in tar archives")
     index.add_argument("-m", "--multi_f5",
                         help="path to multi-fast5 files")
-    parser.add_argument("-c", "--f5_format", default="ms", choices=["mm", "ms", "sm"],
-                        help="fast5 file format output - mm=multi->multi, ms=multi->single, etc...")
+    parser.add_argument("-c", "--f5_format", default="multi", choices=["multi", "single"],
+                        help="fast5 file format output")
     parser.add_argument("--threshold", default=4000, type=int,
                         help="threshold number for amount of reads in a single multifast5 output file")
     parser.add_argument("-o", "--output", required=True,
@@ -277,7 +277,7 @@ def main():
 
         # TODO: place multiprocessing pool here
         # if converting single to multi, initialise needed variables
-        if args.f5_format == 'sm':
+        if args.f5_format == 'multi':
             count = 0
             i = 0
             outfile = "multi_"+str(i)
@@ -299,23 +299,22 @@ def main():
                     traceback.print_exc()
                     sys.stderr.write("Failed to extract: {} {}\n".format(p, f))
                 else:
-                    if args.f5_format == 'sm':
+                    if args.f5_format == 'multi':
                         # increase count if file is sucessfully extracted and add details to mapping file
                         count += 1
                         with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
                             out_sum.write("{}\t{}\n".format(outfile, f))
-                        # if threshold is reached, all files in folder are converted into single multi fast5 file
+                        # if threshold is reached, all files in folder are converted into single multi fast5 file and folder and count are reset
                         if count == args.threshold:
                             s2m(tmp_path, save_path, outfile, None)
-                            # delete temp folder and make a new one
                             shutil.rmtree(tmp_path)
                             i += 1
                             outfile = "multi_"+str(i)
                             os.mkdir("fast5_fetcher_temp")
                             tmp_path = os.path.abspath("fast5_fetcher_temp")
                             count = 0
-        # if there are any left, convert them into a multi fast5 file
-        if args.f5_format == 'sm':
+        # if there are any single fast5 left, convert them into a multi fast5 file
+        if args.f5_format == 'multi':
             if count != 0:
                 s2m(tmp_path, save_path, outfile, None)
             shutil.rmtree(tmp_path)
@@ -657,6 +656,7 @@ def get_paths_multi_f5(path, filenames):
                     filepaths.append([os.path.join(dirpath, fast5), fast5])
     return filepaths
 
+
 def convert_multi_to_single(input_file, read_list, output_folder):
     '''
     Pull the exact read out of the file.
@@ -697,7 +697,7 @@ def m2s(f5_path, read_list, save_path):
 
 def s2m(f5_path, save_path, output_file, target_compression):
     '''
-    Combine single fast5 files into 1 multi fast5 file
+    Combine single fast5 files in the f5_path dir into 1 multi fast5 file, saved as output_file in the save_path
     '''
     filenames = []
     results = []
@@ -719,7 +719,7 @@ def multi_f5_handler(args, m_paths, filenames):
     '''
     save_path = args.output
 
-    if args.f5_format == "mm":
+    if args.f5_format == "multi":
         threshold = args.threshold
         count = 0
         index = 0
@@ -732,11 +732,10 @@ def multi_f5_handler(args, m_paths, filenames):
             length = len(readIDs)
             count += length
             if count >= threshold:
-                # find how many more to add
+                # add reads to reach the exact threshold
                 index = length - (count - threshold)
-                # add the reads that fit
                 convert_multi_to_single(p, readIDs[:index], tmp_path)
-                # convert to multi
+                # convert the single files to a single multi
                 s2m(tmp_path, save_path, outfile, None)
                 # write to the mapping file
                 with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
@@ -786,14 +785,10 @@ def multi_f5_handler(args, m_paths, filenames):
         if os.listdir(tmp_path):
             # convert remaining files to multi
             s2m(tmp_path, save_path, outfile, None)
-            # write the mapping file
-            with open(os.path.join(save_path, "filename_mapping.txt"), 'a') as out_sum:
-                for ID in readIDs[index:]:
-                    out_sum.write("{}\t{}\n".format(outfile, ID))
         # remove temp folder
         shutil.rmtree(tmp_path)
 
-    elif args.f5_format == "ms":
+    elif args.f5_format == "single":
         with open(os.path.join(args.output, "filename_mapping.txt"), 'w') as out_sum:
             out_sum.write("multi_read_file\tsingle_read_file\n")
         for p, f in m_paths:
@@ -826,7 +821,7 @@ def extract_file(args, path, filename):
     OSystem = ""
     OSystem = args.OSystem
     save_path = args.output
-    if args.f5_format == "sm":
+    if args.f5_format == "multi":
         save_path = os.path.abspath("fast5_fetcher_temp")
     
     if path.endswith('.tar'):
