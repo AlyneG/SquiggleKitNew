@@ -84,7 +84,7 @@ def main():
     group.add_argument("-s", "--signal",
                         help="Extracted signal file from SquigglePull. Currently not compatible with conversion")
     group.add_argument("-i", "--ind", nargs='+', 
-                        help="Individual fast5 files")
+                        help="Individual fast5 file/s")
     parser.add_argument("-r", "--readID",
                         help="Individual readID to extract from a multifast5 file")
     parser.add_argument("--single",action="store_true",

@@ -68,10 +68,7 @@ def main():
     # SquigglePull sub-module options
     pull.add_argument("-p", "--path",
                         help="Top directory path of fast5 files")
-    pull.add_argument("--single", action="store_true",
-                        help="single_fast5 files")
-    pull.add_argument("-s", "--scale", action="store_true",
-                        help="Scale signal output for comparison")
+    pull.add_argument("-t", "--type", action="store", default="auto", choices=["auto", "single", "multi"], help="Specify the type of files provided. Default is autodetection which enables a mix of single and multifast5 files.")
     pull.add_argument("-r", "--raw_signal", action="store_true",
                         help="No conversion to pA, raw signal is extracted instead")
     pull.add_argument("-i", "--extra_info", action="store_true",
@@ -85,18 +82,18 @@ def main():
     group = plot.add_mutually_exclusive_group()
     #   need to make it so that raw_signal flag cannot be applied with the signal file
     #   currently cannot support it unless output file contains digitisation, range and offest values (extra info mode)
-    group.add_argument("-f", "--f5f",
-                        help="File list of fast5 paths - Single fast5 only")
+
     group.add_argument("-p", "--f5_path",
                         help="Fast5 top dir")
     group.add_argument("-s", "--signal",
                         help="Extracted signal file from SquigglePull")
-    group.add_argument("-i", "--ind",
-                        help="Individual fast5 file.")
+    group.add_argument("-i", "--ind", nargs="+", 
+                        help="Individual fast5 file/s.")
     plot.add_argument("-r", "--readID",
                         help="Individual readID to extract from a multifast5 file")
-    plot.add_argument("--single",action="store_true",
-                        help="single fast5 files")
+    #plot.add_argument("--single",action="store_true",
+    #                    help="single fast5 files")
+    plot.add_argument("-t", "--type", action="store", default="auto", choices=["auto", "single", "multi"], help="Specify the type of files provided. Default is autodetection which enables a mix of single and multifast5 files.")    
     plot.add_argument("--head", action="store_true",
                         help="Header present in signal or flat file")
     plot.add_argument("--raw_signal",action="store_true",
@@ -210,12 +207,12 @@ def squigglePull(args):
             if fast5.endswith('.fast5'):
                 fast5_file = os.path.join(dirpath, fast5)
                 # extract data from file
-                data = extract_f5_all(fast5_file, args)
+                data, multi = extract_f5_all(fast5_file, args)
                 if not data:
                     sys.stderr.write("main():data not extracted from {}. Moving to next file.".format(fast5_file))
                     continue
                 # print data
-                if args.single:
+                if not multi:
                     print_data(data, args, fast5)
                 else:
                     for read in data:
@@ -240,42 +237,14 @@ def squigglePlot(args):
     if args.head:
         head = True
 
-    if args.f5f:
-        # file list of fast5 files.
-        # fast5_name\tquality_score
-        # not using the second column atm
-        args.single = True
-        with open(args.f5f, 'rt') as sz:
-            for l in sz:
-                if head:
-                    head = False
-                    continue
-                l = l.strip('\n')
-                l = l.split('\t')[0]
-                path = l
-                l = l.split('/')
-                fast5 = l[-1]
-                data = extract_f5_all(path, args)
-                sig = data.get('raw')
-                if not sig.any():
-                    continue
-                if N:
-                    sig = sig[:N]
-                elif N1 or N2:
-                    sig = sig[N1:N2]
-                sig = np.array(sig, dtype=float)
-                sig = scale_outliers(sig, args)
-                # output sections
-                view_sig(args, sig, fast5)
-
-    elif args.f5_path:
+    if args.f5_path:
         # process fast5 files given top level path
         for dirpath, dirnames, files in os.walk(args.f5_path):
             for fast5 in files:
                 if fast5.endswith('.fast5'):
                     fast5_file = os.path.join(dirpath, fast5)
-                    data = extract_f5_all(fast5_file, args)
-                    if args.single:
+                    data, multi = extract_f5_all(fast5_file, args)
+                    if not multi:
                         sig = data.get('raw')
                         if not sig:
                             sys.stderr.write("main():data not extracted. Moving to next file: {}\n".format(fast5_file))
@@ -303,33 +272,35 @@ def squigglePlot(args):
                             view_sig(args, sig, read)
 
     elif args.ind:
-        # Do an OS detection here for windows (get from fast5_fetcher)
-        fast5_file = args.ind.split('/')[-1]
-        # extract data from file
-        sig = None
-        data = extract_f5_all(args.ind, args)
-        if args.single:
-            sig = data.get('raw')
-            read = fast5_file
-        else:
-            if args.readID:
-            # if readID is provided, only get data with matching readID
-            # is this the same for all multifast5 files?
-                sig = data['read_'+args.readID].get('raw')
-                read = args.readID
+        files = args.ind
+        for fast5_file in files:
+            # Do an OS detection here for windows (get from fast5_fetcher)
+            fast5_file = args.ind.split('/')[-1]
+            # extract data from file
+            sig = None
+            data, multi = extract_f5_all(fast5_file, args)
+            if not multi:
+                sig = data.get('raw')
+                read = fast5_file
             else:
-                for read in data:
-                    sig = data[read].get('raw')
-                    if not sig.any():
-                        sys.stderr.write("main():data not extracted from: {}".format(args.ind))
-                    if N:
-                        sig = sig[:N]
-                    elif N1 or N2:
-                        sig = sig[N1:N2]
-                    sig = np.array(sig, dtype=float)
-                    sig = scale_outliers(sig, args)
-                    view_sig(args, sig, read)
-                sys.exit(0)
+                if args.readID:
+                # if readID is provided, only get data with matching readID
+                # is this the same for all multifast5 files?
+                    sig = data['read_'+args.readID].get('raw')
+                    read = args.readID
+                else:
+                    for read in data:
+                        sig = data[read].get('raw')
+                        if not sig.any():
+                            sys.stderr.write("main():data not extracted from: {}".format(args.ind))
+                        if N:
+                            sig = sig[:N]
+                        elif N1 or N2:
+                            sig = sig[N1:N2]
+                        sig = np.array(sig, dtype=float)
+                        sig = scale_outliers(sig, args)
+                        view_sig(args, sig, read)
+                    continue
 
         if not sig.any():
             sys.stderr.write("main():data not extracted from: {}".format(args.ind))
@@ -375,10 +346,7 @@ def squigglePlot(args):
                 elif N1 or N2:
                     sig = sig[N1:N2]
                 sig = scale_outliers(sig, args)
-                if args.single:
-                    view_sig(args, sig, fast5)
-                else:
-                    view_sig(args, sig, readID)
+                view_sig(args, sig, readID, fast5)
 
 def segmenter(args):
 
@@ -397,7 +365,7 @@ def segmenter(args):
                 path = l
                 l = l.split('/')
                 fast5 = l[-1]
-                data = extract_f5_all(path, args)
+                data, multi = extract_f5_all(path, args)
                 sig = data.get('raw')
                 if not sig.any():
                     sys.stderr.write("main():data not extracted. Moving to next file: {}".format(fast5))
@@ -434,7 +402,7 @@ def segmenter(args):
                 if fast5.endswith('.fast5'):
                     fast5_file = os.path.join(dirpath, fast5)
                     # extract data from file
-                    data = extract_f5_all(fast5_file, args)
+                    data, multi = extract_f5_all(fast5_file, args)
                     if args.single:
                         # extract data from file
                         sig = data.get('raw')
@@ -560,9 +528,24 @@ def extract_f5_all(filename, args):
         dic for further processing/printing
     '''
     f5_dic = {}
+    multi = False
     with h5py.File(filename, 'r') as hdf:
+        if args.type == "auto":
+            reads = list(hdf.keys())
+            if 'read' not in reads[1]:
+                if args.verbose:
+                    sys.stderr.write("{} detected as a single fast5 file\n".format(filename)) 
+                multi = False
+            else:
+                if args.verbose:
+                    sys.stderr.write("{} detected as a multi fast5 file\n".format(filename))
+                multi = False
+        elif args.type == "multi":
+            reads = list(hdf.keys())
+            multi = True
+
         # single fast5 files
-        if args.single:
+        if not multi:
             f5_dic = {'raw': [], 'seq': '', 'readID': '',
                     'digitisation': 0.0, 'offset': 0.0, 'range': 0.0,
                     'sampling_rate': 0.0}
@@ -636,8 +619,12 @@ def extract_f5_all(filename, args):
                     traceback.print_exc()
                     sys.stderr.write("extract_fast5_all():failed to read readID: {}\n".format(read))
 
-    return f5_dic
+    return f5_dic, multi
 
+#def check_multi(file, signal):
+#    if signal:
+        #check if signal file is a multi
+        
 
 def convert_to_pA_numpy(d, digitisation, range, offset):
     raw_unit = range / digitisation
@@ -675,7 +662,7 @@ def print_data(data, args, fast5):
         print('{}\t{}\t{}'.format(
                 fast5, data['readID'], '\t'.join(ar)))
 
-def view_sig(args, sig, name, path=None):
+def view_sig(args, sig, name, fast5, path=None):
     '''
     View the squiggle
     '''
@@ -696,10 +683,10 @@ def view_sig(args, sig, name, path=None):
     else:
         raw = args.raw_signal
     if raw:
-        plt.title("Raw signal for:   {}".format(name))
+        plt.title("Raw signal for:   {}\nFile:   {}".format(name, fast5))
         plt.ylabel("Current - Not scaled")
     else:
-        plt.title("Signal for:   {}".format(name))
+        plt.title("Signal for:   {}\nFile:   {}".format(name, fast5))
         plt.ylabel("Current (pA)")       
 
 

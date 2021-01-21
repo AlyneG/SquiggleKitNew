@@ -111,12 +111,12 @@ def main():
             if fast5.endswith('.fast5'):
                 fast5_file = os.path.join(dirpath, fast5)
                 # extract data from file
-                data, single = extract_f5_all(fast5_file, args)
+                data, multi = extract_f5_all(fast5_file, args)
                 if not data:
                     sys.stderr.write("main():data not extracted from {}. Moving to next file.".format(fast5_file))
                     continue
-                # print data
-                if single:
+                 print data
+                if not multi:
                     print_data(data, args, fast5)
                 else:
                     for read in data:
@@ -138,7 +138,7 @@ def extract_f5_all(filename, args):
         dic for further processing/printing
     '''
     f5_dic = {}
-    single = True
+    multi = False
     with h5py.File(filename, 'r') as hdf:
 
         if args.type == "auto":
@@ -146,17 +146,29 @@ def extract_f5_all(filename, args):
             if 'read' not in reads[1]:
                 if args.verbose:
                     sys.stderr.write("{} detected as a single fast5 file\n".format(filename)) 
-                single = True
+                multi = False
             else:
                 if args.verbose:
                     sys.stderr.write("{} detected as a multi fast5 file\n".format(filename))
-                single = False
+                multi = False
         elif args.type == "multi":
             reads = list(hdf.keys())
-            single = False
+            multi = True
+
+#    with h5py.File(filename, 'r') as hdf:
+#        multi = False
+#        if args.type == "auto":
+#            multi = f5_check_multi(hdf)
+#            if args.verbose:
+#                if multi:
+#                    sys.stderr.write("{} detected as a multi fast5 file\n".format(filename))
+#                else:
+#                    sys.stderr.write("{} detected as a single fast5 file\n".format(filename)) 
+#        elif args.type == "multi":
+#            multi = True
 
         # single fast5 files
-        if single:
+        if not multi:
             f5_dic = {'raw': [], 'seq': '', 'readID': '',
                     'digitisation': 0.0, 'offset': 0.0, 'range': 0.0,
                     'sampling_rate': 0.0}
@@ -219,8 +231,8 @@ def extract_f5_all(filename, args):
                 except:
                     traceback.print_exc()
                     sys.stderr.write("extract_fast5_all():failed to read readID: {}".format(read))
-
-    return f5_dic, single
+    
+    return f5_dic, multi
 
 # new numpy version of convert function
 def convert_to_pA_numpy(d, digitisation, range, offset):
@@ -241,6 +253,19 @@ def print_data(data, args, fast5):
     else:                        
         print('{}\t{}\t{}'.format(
                 fast5, data['readID'], '\t'.join(ar)))
+
+# check whether file provided is multi or single
+# doesn't work as cannot get file version attribute
+def f5_check_multi(hdf):
+    ver = hdf.get("file_version", default=None)
+    if ver is not None:
+        version = ver.split('.')
+        if len(version) != 2:
+            sys.write.stderr("Could not auto detect the file type. Please supply the type as an argument command line and re-run.")
+            sys.exit(1)
+        return version[0] >= 1
+    else:
+        return False
 
 if __name__ == '__main__':
     main()
