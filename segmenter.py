@@ -53,8 +53,9 @@ def main():
     parser = MyParser(
         description="segmenter - script to find obvious regions in squiggle data")
     group = parser.add_mutually_exclusive_group()
-    group.add_argument("-f", "--f5f",
-                       help="File list of fast5 paths")
+
+    group.add_argument("-i", "--ind", nargs='+', 
+                        help="Individual fast5 file/s")
     group.add_argument("-p", "--f5_path",
                        help="Fast5 top dir")
     group.add_argument("-s", "--signal",
@@ -106,47 +107,7 @@ def main():
     squig = []
     segs = []
 
-    if args.f5f:
-        # file list of fast5 files.
-        # fast5_name {Tab} quality_score
-        # not using the second column atm
-        with open(args.f5f, 'r') as s:
-            for l in s:
-                l = l.strip('\n')
-                l = l.split('\t')[0]
-                path = l
-                l = l.split('/')
-                fast5 = l[-1]
-                sig = process_fast5(path, args)
-                if not sig:
-                    sys.stderr.write("main():data not extracted. Moving to next file: {}".format(fast5))
-                    continue
-                # cut signal based on -n flag
-                sig = sig[:args.Num]
-                # This removes very large high and low peaks
-                sig = scale_outliers(sig, args)
-                # Do the segment detection
-                segs = get_segs(sig, args)
-                if not segs:
-                    sys.stderr.write("no segments found: {}".format(fast5))
-                    continue
-                # run tests on segments based on user question
-                if args.test:
-                    segs = test_segs(segs, args)
-                    if not segs:
-                        continue
-                # output sections
-                out = []
-                for i, j in segs:
-                    out.append(str(i))
-                    out.append(str(j))
-                    output = ",".join(out)
-                print("\t".join([fast5, output]))
-                # visualise for parameter tuning
-                if args.view:
-                    view_segs(segs, sig, args)
-
-    elif args.f5_path:
+    if args.f5_path:
         # process fast5 files given top level path, recursive
         for dirpath, dirnames, files in os.walk(args.f5_path):
             for fast5 in files:
@@ -267,7 +228,67 @@ def main():
                 # visualise for parameter tuning
                 if args.view:
                     view_segs(segs, sig, args)
+    elif args.ind:
+        files = args.ind
+        for fast5_file in files:
+            if not args.single:
+                sigs = get_multi_fast5_signal(args, fast5_file)
+                for read in sigs:
+                    sig = sigs[read]
+                    sig = sig[:args.Num]
 
+                    sig = np.array(sig, dtype=float)
+                    sig = scale_outliers(sig, args)
+                    segs = get_segs(sig, args)
+                    if not segs:
+                        sys.stderr.write("no segments found: {}".format(fast5_file))
+                        continue
+                    # run tests on segments based on user question
+                    if args.test:
+                        segs = test_segs(segs, args)
+                        if not segs:
+                            continue
+                    # output sections
+                    out = []
+                    for i, j in segs:
+                        out.append(str(i))
+                        out.append(str(j))
+                        output = ",".join(out)
+                    print("\t".join([read, output]))
+                    # visualise for parameter tuning
+                    if args.view:
+                        view_segs(segs, sig, args)
+            else:
+                # extract data from file
+                sig = process_fast5(fast5_file, args)
+                if sig is None:
+                    sys.stderr.write("main():data not extracted. Moving to next file: {}".format(fast5_file))
+                    continue
+                # cut signal based on -n flag
+                sig = sig[:args.Num]
+                sig = np.array(sig, dtype=float)
+                # This removes very large high and low peaks
+                sig = scale_outliers(sig, args)
+                # Do the segment detection
+                segs = get_segs(sig, args)
+                if not segs:
+                    sys.stderr.write("no segments found: {}".format(fast5_file))
+                    continue
+                # run tests on segments based on user question
+                if args.test:
+                    segs = test_segs(segs, args)
+                    if not segs:
+                        continue
+                # output sections
+                out = []
+                for i, j in segs:
+                    out.append(str(i))
+                    out.append(str(j))
+                    output = ",".join(out)
+                print("\t".join([fast5_file, output]))
+                # visualise for parameter tuning
+                if args.view:
+                    view_segs(segs, sig, args)
     else:
         sys.stderr.write("Unknown file or path input")
         parser.print_help(sys.stderr)
