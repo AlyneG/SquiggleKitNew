@@ -43,6 +43,8 @@ matplotlib.use('TkAgg')
 #import h5py
 #import sklearn.preprocessing
 
+import subprocess
+
 
 class MyParser(argparse.ArgumentParser):
     def error(self, message):
@@ -165,6 +167,10 @@ def main():
 
     # sub-module for MotifSeq
 
+    # sub-module for web application
+    web = subcommand.add_parser('web', help='launch the web application version of SquiggleKit',
+                                    formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
     # collect args
     args = parser.parse_args()
 
@@ -194,6 +200,9 @@ def main():
             segment.print_help(sys.stderr)
             sys.exit(1)
         segmenter(args)
+
+    if args.command == "web":
+        os.system("python main.py")
 
     if args.verbose:
         end_time = time.time() - start_time
@@ -539,7 +548,7 @@ def extract_f5_all(filename, args):
             else:
                 if args.verbose:
                     sys.stderr.write("{} detected as a multi fast5 file\n".format(filename))
-                multi = False
+                multi = True
         elif args.type == "multi":
             reads = list(hdf.keys())
             multi = True

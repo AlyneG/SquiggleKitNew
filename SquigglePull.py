@@ -150,7 +150,7 @@ def extract_f5_all(filename, args):
             else:
                 if args.verbose:
                     sys.stderr.write("{} detected as a multi fast5 file\n".format(filename))
-                multi = False
+                multi = True
         elif args.type == "multi":
             reads = list(hdf.keys())
             multi = True
