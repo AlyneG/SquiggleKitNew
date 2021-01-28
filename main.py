@@ -4,6 +4,16 @@ import sys
 import time
 import h5py
 import traceback
+import numpy as np
+#from bokeh.plotting import figure
+#from bokeh.client import pull_session
+#from bokeh.embed import server_session
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 14})
+import mpld3
+import json
 
 app = Flask(__name__)
 
@@ -20,15 +30,80 @@ def home():
     return render_template("home.html")
 
 @app.route("/results")
-def display(f5_path=None):
-    if request.args['f5_path']:
-        for dirpath, dirnames, files in os.walk(request.args['f5_path']):
+def results(f5_path=None):
+
+    f5_path = request.args['f5_path']
+    type = request.args['type']
+
+    if request.args['processing'] == '0':
+        if os.path.isfile(f5_path+"/data_"+type+".tsv"):
+            exception = "Data file for already exists"
+            return render_template("exception.html", f5_path=f5_path, type=type, exception=exception)
+
+    if request.args['processing'] == '1':
+        os.remove(f5_path+"/data_"+type+".tsv")
+
+    count = 0
+    with open(os.path.join(f5_path, "data_"+type+".tsv"), 'a') as out_sum:
+        for dirpath, dirnames, files in os.walk(f5_path):
             for fast5 in files:
                 if fast5.endswith('.fast5'):
                     fast5_file = os.path.join(dirpath, fast5)
                     # extract data from file
-                    data = extract_f5_all(fast5_file, request.args['type'])
-    return render_template("results.html")
+                    data, multi = extract_f5_all(fast5_file, request.args['type'])
+                    #print data to a single file
+                    if not multi:
+                        count += 1
+                        ar = []
+                        for i in data['raw']:
+                            ar.append(str(i))
+
+                        out_sum.write('{}\t{}\t{}\n'.format(
+                                fast5, data['readID'], '\t'.join(ar)))
+                    else:
+                        for read in data:
+                            count += 1
+                            ar = []
+                            for i in data[read]['raw']:
+                                ar.append(str(i))
+
+                            out_sum.write('{}\t{}\t{}\n'.format(
+                                    fast5, data[read]['readID'], '\t'.join(ar)))
+    return render_template("results.html", f5_path=f5_path, type=type, count=count)
+
+@app.route("/view_graphs")
+def view():
+
+    f5_path = request.args['f5_path']
+    type = request.args['type']
+    num = int(request.args['graph_num'])
+
+    with open(f5_path+"/data_"+type+".tsv", 'rt') as data:
+        for i, l in enumerate(data):
+            if i == num:
+                l = l.strip('\n')
+                l = l.split('\t')
+                fast5 = l[0]
+                readID = l[1]
+                if "." in l[4]:
+                    sig = np.array([float(i) for i in l[4:]], dtype=float)
+                else:
+                    sig = np.array([int(i) for i in l[4:]], dtype=int)
+    plt.ioff()
+    dic = view_sig(sig, type, readID, fast5)
+    graph = dict()
+    graph['id'] = 'graph_'+str(readID)
+    graph['file'] = fast5
+    graph['num'] = num
+    graph['json'] = json.dumps(dic)
+    return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, count=i)
+
+@app.route("/test")
+def bkapp_page():
+    with pull_session(url="http://localhost:5006/sliders") as session:
+        session.document.root[0].children[1].title.text ="special sliders"
+        script = sever_session(session_id=session_id, url='special sliders')
+        return render_template("embed.html", script=script, template="Flask")
 
 def extract_f5_all(filename, type):
     '''
@@ -50,7 +125,6 @@ def extract_f5_all(filename, type):
         reads = list(hdf.keys())
         if 'read' not in reads[1]:
             multi = False
-
 
         # single fast5 files
         if not multi:
@@ -104,11 +178,43 @@ def extract_f5_all(filename, type):
                     traceback.print_exc()
                     sys.stderr.write("extract_fast5_all():failed to read readID: {}".format(read))
     
-    return f5_dic
+    return f5_dic, multi
 
 def convert_to_pA_numpy(d, digitisation, range, offset):
     raw_unit = range / digitisation
     return (d + offset) * raw_unit
+
+#def scale_outliers(sig, args):
+    ''' Scale outliers to within m stdevs of median '''
+    ''' Remove outliers that don't fit within the specified bounds '''
+#    k = (sig > args.lim_low) & (sig < args.lim_hi)
+#    return sig[k]
+
+def view_sig(sig, type, name, file):
+    '''
+    View the squiggle
+    '''
+    fig = plt.figure(figsize=(10,7))
+    # fig.subplots_adjust(hspace=0.1, wspace=0.01)
+    # ax = fig.add_subplot(111)
+    # plt.tight_layout()
+    plt.autoscale()
+    plt.xlabel("")
+    
+    
+    if type == 'raw':
+        plt.title("Raw signal for:  {}".format(name))
+        plt.ylabel("Current - Not scaled")
+    else:
+        plt.title("Signal for:   {}".format(name))
+        plt.ylabel("Current (pA)")       
+
+
+    plt.plot(sig, color='dimgray')
+    graph = mpld3.fig_to_dict(fig)
+    plt.clf()
+    return graph
+    
 
 if __name__ == "__main__":
     app.run(port="8080", debug=True)
