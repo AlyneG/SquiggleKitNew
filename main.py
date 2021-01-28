@@ -98,12 +98,20 @@ def view():
     graph['json'] = json.dumps(dic)
     return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, count=i)
 
-@app.route("/test")
-def bkapp_page():
-    with pull_session(url="http://localhost:5006/sliders") as session:
-        session.document.root[0].children[1].title.text ="special sliders"
-        script = sever_session(session_id=session_id, url='special sliders')
-        return render_template("embed.html", script=script, template="Flask")
+#@app.route("/test")
+#def bkapp_page():
+#    with pull_session(url="http://localhost:5006/sliders") as session:
+#        session.document.root[0].children[1].title.text ="special sliders"
+#        script = sever_session(session_id=session_id, url='special sliders')
+#        return render_template("embed.html", script=script, template="Flask")
+
+@app.route("/delete")
+def delete():
+    f5_path = request.args['f5_path']
+    type = request.args['type']
+    if os.path.isfile(f5_path+"/data_"+type+".tsv"):
+        os.remove(f5_path+"/data_"+type+".tsv")
+    return redirect("/")
 
 def extract_f5_all(filename, type):
     '''
