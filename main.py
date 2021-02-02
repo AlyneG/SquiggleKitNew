@@ -13,6 +13,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.rcParams.update({'font.size': 14})
 import mpld3
+from mpld3 import plugins
 import json
 
 app = Flask(__name__)
@@ -202,25 +203,25 @@ def view_sig(sig, type, name, file):
     '''
     View the squiggle
     '''
-    fig = plt.figure(figsize=(10,7))
-    # fig.subplots_adjust(hspace=0.1, wspace=0.01)
-    # ax = fig.add_subplot(111)
-    # plt.tight_layout()
-    plt.autoscale()
-    plt.xlabel("")
-    
+    fig, ax = plt.subplots(figsize=(10,7))
+    x = range(len(sig))
+    y = sig.tolist()
+    lines = ax.plot(x,y, marker="o")    
+
+    plugins.connect(fig, plugins.PointLabelTooltip(lines[0],labels=y))
+    #plt.autoscale()
+    ax.set_xlabel("")
     
     if type == 'raw':
-        plt.title("Raw signal for:  {}".format(name))
-        plt.ylabel("Current - Not scaled")
+        ax.set_title("Raw signal for:  {}".format(name))
+        ax.set_ylabel("Current - Not scaled")
     else:
-        plt.title("Signal for:   {}".format(name))
-        plt.ylabel("Current (pA)")       
+        ax.set_title("Signal for:   {}".format(name))
+        ax.set_ylabel("Current (pA)")       
 
-
-    plt.plot(sig, color='dimgray')
+    #plt.plot(sig, color='dimgray')
     graph = mpld3.fig_to_dict(fig)
-    plt.clf()
+    #plt.clf()
     return graph
     
 
