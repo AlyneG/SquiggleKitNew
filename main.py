@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, Markup
 import os
 import sys
 import time
@@ -91,12 +91,13 @@ def view():
                 else:
                     sig = np.array([int(i) for i in l[4:]], dtype=int)
     plt.ioff()
-    dic = view_sig(sig, type, readID, fast5)
     graph = dict()
-    graph['id'] = 'graph_'+str(readID)
+    html_graph = view_sig(sig, type, readID, fast5)
+    graph['id'] = str(readID)
     graph['file'] = fast5
     graph['num'] = num
-    graph['json'] = json.dumps(dic)
+    #graph['json'] = json.dumps(dic)
+    graph['html'] = Markup(html_graph)
     return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, count=i)
 
 #@app.route("/test")
@@ -203,26 +204,25 @@ def view_sig(sig, type, name, file):
     '''
     View the squiggle
     '''
-    fig, ax = plt.subplots(figsize=(10,7))
+    fig, ax = plt.subplots(figsize=(14,7))
     x = range(len(sig))
     y = sig.tolist()
-    lines = ax.plot(x,y, marker="o")    
+    lines = ax.plot(x,y, marker="o", markersize=2)    
 
     plugins.connect(fig, plugins.PointLabelTooltip(lines[0],labels=y))
     #plt.autoscale()
     ax.set_xlabel("")
     
     if type == 'raw':
-        ax.set_title("Raw signal for:  {}".format(name))
+        ax.set_title("Raw signal for: {} | File: {}".format(name, file))
         ax.set_ylabel("Current - Not scaled")
     else:
-        ax.set_title("Signal for:   {}".format(name))
+        ax.set_title("Signal for: {} | File: {}".format(name, file))
         ax.set_ylabel("Current (pA)")       
 
-    #plt.plot(sig, color='dimgray')
-    graph = mpld3.fig_to_dict(fig)
-    #plt.clf()
-    return graph
+    #graph = mpld3.fig_to_dict(fig)
+    html_graph = mpld3.fig_to_html(fig)
+    return html_graph
     
 
 if __name__ == "__main__":
