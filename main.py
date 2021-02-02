@@ -1,11 +1,13 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, Markup
 import os
 import sys
 import time
 import h5py
 import traceback
 import numpy as np
-#from bokeh.plotting import figure
+from bokeh.plotting import figure
+from bokeh.resources import CDN
+from bokeh.embed import file_html
 #from bokeh.client import pull_session
 #from bokeh.embed import server_session
 import matplotlib
@@ -90,13 +92,14 @@ def view():
                     sig = np.array([float(i) for i in l[4:]], dtype=float)
                 else:
                     sig = np.array([int(i) for i in l[4:]], dtype=int)
-    plt.ioff()
-    dic = view_sig(sig, type, readID, fast5)
+    #plt.ioff()
+    html_graph = view_sig(sig, type, readID, fast5)
     graph = dict()
     graph['id'] = 'graph_'+str(readID)
     graph['file'] = fast5
     graph['num'] = num
     graph['json'] = json.dumps(dic)
+    graph['html'] = Markup(html_graph)
     return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, count=i)
 
 #@app.route("/test")
@@ -203,26 +206,32 @@ def view_sig(sig, type, name, file):
     '''
     View the squiggle
     '''
-    fig, ax = plt.subplots(figsize=(10,7))
-    x = range(len(sig))
-    y = sig.tolist()
-    lines = ax.plot(x,y, marker="o")    
+    #fig, ax = plt.subplots(figsize=(10,7))
+    #x = range(len(sig))
+    #y = sig.tolist()
+    #lines = ax.plot(x,y, marker="o")    
 
-    plugins.connect(fig, plugins.PointLabelTooltip(lines[0],labels=y))
+    #plugins.connect(fig, plugins.PointLabelTooltip(lines[0],labels=y))
     #plt.autoscale()
-    ax.set_xlabel("")
+    #ax.set_xlabel("")
     
     if type == 'raw':
-        ax.set_title("Raw signal for:  {}".format(name))
-        ax.set_ylabel("Current - Not scaled")
+        title = "Raw signal for:  "+name
+        #ax.set_title("Raw signal for:  {}".format(name))
+        #ax.set_ylabel("Current - Not scaled")
     else:
-        ax.set_title("Signal for:   {}".format(name))
-        ax.set_ylabel("Current (pA)")       
+        title = "Signal for:  "+name
+        #ax.set_title("Signal for:   {}".format(name))
+        #ax.set_ylabel("Current (pA)")       
 
     #plt.plot(sig, color='dimgray')
-    graph = mpld3.fig_to_dict(fig)
+    #graph = mpld3.fig_to_dict(fig)
     #plt.clf()
-    return graph
+
+    p = figure(plot_width=1000, plot_height=400)
+    p.line(list(range(0,len(sig))),sig,line_width=2)
+    html = file_html(p, CDN, title)
+    return html
     
 
 if __name__ == "__main__":
