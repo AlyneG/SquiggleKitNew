@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>SquiggleKit Web</title>        
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.1/css/bulma.css">
+        <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+        <script type="text/javascript" src="http://mpld3.github.io/js/mpld3.v0.2.js"></script>
+        <script>
+            function loadGraph(){
+                var graph_num = document.getElementById("num").value
+                var error = document.getElementById("error")
+                if (graph_num > {{count}}){
+                    error.innerHTML="Invalid number."
+                } else {
+                    window.location.replace("/view_graphs?f5_path={{f5_path}}&type={{type}}&graph_num=".concat(graph_num))
+                }
+            }
+        
+            function modal(){
+                document.getElementById("delete_modal").classList.add("is-active")
+            }
+
+            function cancel(){
+                document.getElementById("delete_modal").classList.remove("is-active")
+            }
+
+            function deleteData(){
+                window.location.replace("/delete?f5_path={{f5_path}}&type={{type}}")
+            }
+        </script>
+    </head>
+    <body>
+        <section class="section has-text-centered">
+            <a href="/"><h1 class="title has-text-link">SquiggleKit Web</h1></a>
+            <h2 class="subtitle">A toolkit to help with the display and analysis of Oxford Nanopore raw signal data.</h2>
+        </section>
+
+	<div class="modal" id="delete_modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Confirm Delete</p>
+                <button class="delete" aria-label="close" onClick=cancel()></button>
+            </header>
+            <section class="modal-card-body">
+                Are you sure you would like to delete the signal file? This cannot be retrieved and will need to be recreated if you wish to view the data again.
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-danger" onClick="deleteData()">Yes</button>
+                <button class="button" onClick="cancel()">Cancel</button>
+            </footer>
+        </div>
+	</div>
+
+        <section class="section has-text-centered">
+            <h1 class="title is-5">Data from {{count + 1}} files was successfully extracted from</h1><h1 class="title is-5 has-text-info">{{f5_path}}</h1>
+            <p>Select a number between 0 and {{count}}</p><br>
+            <div class="field has-addons has-addons-centered">
+                <div class="control">
+                    <input type="number" class="input is-rounded has-text-centered" id="num" value="{{graph.num}}" step="1" min=0 max={{count}}>
+                </div>
+                <div class="control">
+                    <input class="button is-info is-rounded" type="submit" value="View" onClick="loadGraph()">
+                </div>   
+            </div>
+            <p class="has-text-danger" id="error"></p> 
+            <input class="button is-rounded is-danger" type="submit" value="Delete" onClick="modal()">
+            <div id="{{graph.id}}">
+                {{graph.html}}
+                <p class="subtitle has-text-left"><strong>File:</strong> {{graph.file}}<br><strong>Read ID:</strong> {{graph.id}}<br><strong>Data Type:</strong> {{type}}<br></p>
+            </div>
+        </section>
+        <!--script type="text/javascript">
+            var figureID = "{{graph.id}}"
+            var json = {{graph.json|safe}}
+            mpld3.draw_figure(figureID, json)
+        </script-->
+    </body>
+</html>
