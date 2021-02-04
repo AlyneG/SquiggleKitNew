@@ -242,9 +242,7 @@ def convert_to_pA_numpy(d, digitisation, range, offset):
 # new function created to reduce redundancy of code
 def print_data(data, args, fast5):
 
-    ar = []
-    for i in data['raw']:
-        ar.append(str(i))
+    ar = map(str, data['raw'])
 
     if args.extra_info:
         print('{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(fast5, data['readID'],

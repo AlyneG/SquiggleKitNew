@@ -22,7 +22,7 @@
     <body>
         <section class="section has-text-centered">
             <a href="/"><h1 class="title has-text-link">SquiggleKit Web</h1></a>
-            <h2 class="subtitle">A toolkit to help with the display and analysis of Oxford Nanopore raw signal data.</h2>
+            <h2 class="subtitle">A web application to help with the display and analysis of Oxford Nanopore raw signal data.</h2>
         </section>
 
     <div class="modal" id="delete_modal">
@@ -47,7 +47,7 @@
             <h1 class="title is-6">What would you like to do?</h1>
             <div class="buttons is-centered">
                 <a class="button is-success is-rounded" href="/results?f5_path={{f5_path}}&type={{type}}&processing=1">Continue & Overwrite</a>
-                <a class="button is-warning is-rounded" href="/view_graphs?f5_path={{f5_path}}&type={{type}}&graph_num=0">View Existing Data</a>
+                <a class="button is-warning is-rounded" href="/view_graphs?f5_path={{f5_path}}&type={{type}}">View Existing Data</a>
                 <input class="button is-rounded is-danger" type="submit" value="Delete" onClick="modal()">
             </div>
         </section>
