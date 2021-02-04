@@ -5,17 +5,16 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>SquiggleKit Web</title>        
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.1/css/bulma.css">
-        <script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
-        <script type="text/javascript" src="http://mpld3.github.io/js/mpld3.v0.2.js"></script>
+        <style>
+            .bk {
+                position: center;
+            }
+        </style>
         <script>
             function loadGraph(){
-                var graph_num = document.getElementById("num").value
-                var error = document.getElementById("error")
-                if (graph_num > {{count}}){
-                    error.innerHTML="Invalid number."
-                } else {
-                    window.location.replace("/view_graphs?f5_path={{f5_path}}&type={{type}}&graph_num=".concat(graph_num))
-                }
+                document.getElementById("view_button").classList.add("is-loading")
+                var read_id = document.getElementById("read").value
+                window.location.replace("/view_graphs?f5_path={{f5_path}}&type={{type}}&read_id=".concat(read_id))
             }
         
             function modal(){
@@ -29,12 +28,34 @@
             function deleteData(){
                 window.location.replace("/delete?f5_path={{f5_path}}&type={{type}}")
             }
+
+            function modalClear(){
+                document.getElementById("clear_modal").classList.add("is-active")
+            }
+
+            function cancelClear(){
+                document.getElementById("clear_modal").classList.remove("is-active")
+            }
+
+            function clearGraph(){
+                document.getElementById("clear_modal").classList.remove("is-active")
+                document.getElementById("clear_button").classList.add("is-loading")
+                window.location.reload()
+            }
+
+            function modalHelp(){
+                document.getElementById("help_modal").classList.add("is-active")
+            }
+
+            function closeHelp(){
+                document.getElementById("help_modal").classList.remove("is-active")
+            }
         </script>
     </head>
     <body>
         <section class="section has-text-centered">
             <a href="/"><h1 class="title has-text-link">SquiggleKit Web</h1></a>
-            <h2 class="subtitle">A toolkit to help with the display and analysis of Oxford Nanopore raw signal data.</h2>
+            <h2 class="subtitle">A web application to help with the display and analysis of Oxford Nanopore raw signal data.</h2>
         </section>
 
 	<div class="modal" id="delete_modal">
@@ -54,23 +75,91 @@
         </div>
 	</div>
 
+	<div class="modal" id="clear_modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Confirm Clear Graph</p>
+                <button class="delete" aria-label="close" onClick="cancelClear()"></button>
+            </header>
+            <section class="modal-card-body">
+                Are you sure you would like to clear the graph? This will remove all the current drawings and reset the graph to its original state.
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-success" onClick="clearGraph()">Yes</button>
+                <button class="button" onClick="cancelClear()">Cancel</button>
+            </footer>
+        </div>
+	</div>
+
+	<div class="modal" id="help_modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Help</p>
+                <button class="delete" aria-label="close" onClick="closeHelp()"></button>
+            </header>
+            <section class="modal-card-body">
+                <p>
+                    The tools are located on the right of the graph in a toolbar. Hover over the tool to find out its name. To use the tool, you must activate it by clicking on it. If it has a blue line on the left side, it is activated.<br>
+                    <br><strong>Pan</strong><br>
+                        Click and drag to move across the plot.<br>
+                    <br><strong>Box Zoom</strong><br>
+                        Click and drag to define a box. The plot will automatically zoom in to the defined box.<br>
+                    <br><strong>Wheel Zoom</strong><br>
+                        Use the wheel on a mouse or pinch and drag a mouse pad while the cursor is in the plot to zoom in and out.<br>
+                    <br><strong>Box Edit Tool</strong><br>
+                        Add, move and delete boxes for highlighting specific sections. Upper limit is 5 boxes at a time, after which the oldest box will be replaced by the newest. Hold SHIFT while selecting to select more than one at a time.<br>
+                        <b>Add:</b> Hold SHIFT and click and drag with your mouse.<br>
+                        <b>Move:</b> Click on the desired box/es and drag.<br>               
+                        <b>Delete:</b> Click on the desired box/es and press BACKSPACE/DELETE (for Mac users).<br>
+                    <br><strong>Freehand Draw Tool</strong><br>
+                        Write and draw on the plot.<br>
+                        <b>Add:</b> Simply click and drag. The line will be counted as one until the click is released.<br>
+                        <b>Move:</b> Click on the desired line/s and drag.<br>               
+                        <b>Delete:</b> Click on the desired line/s and press BACKSPACE/DELETE (for Mac users).<br>
+                    <br><strong>Save</strong><br>
+                        Click save to download a png of the graph exactly as is. This includes any zoom selected or drawings/annotations that have been added. 
+                    <br><strong>Reset</strong><br>
+                        Reset will only realign the graph with the original setting. It does not remove any drawings/annotations added.
+                </p>
+            </section>
+            <footer class="modal-card-foot">
+            </footer>
+        </div>
+	</div>
+
         <section class="section has-text-centered">
-            <h1 class="title is-5">Data from {{count + 1}} files was successfully extracted from</h1><h1 class="title is-5 has-text-info">{{f5_path}}</h1>
-            <p>Select a number between 0 and {{count}}</p><br>
+            <h1 class="title is-5">Data of {{count}} reads were successfully extracted from</h1><h1 class="title is-5 has-text-info">{{f5_path}}</h1>
+            <p>Select a readID to view the graph</p><br>
             <div class="field has-addons has-addons-centered">
                 <div class="control">
-                    <input type="number" class="input is-rounded has-text-centered" id="num" value="{{graph.num}}" step="1" min=0 max={{count}}>
+                    <!--input type="number" class="input is-rounded has-text-centered" id="num" value="{{graph.num}}" step="1" min=0 max={{count}}-->
+                    <div class="select is-rounded">
+                        <select id="read">
+                            {% for read in reads %}
+                                {% if read == graph.id %}
+                                    <option value={{read}} selected>{{read}}</option>
+                                {% else %}
+                                    <option value={{read}}>{{read}}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
                 </div>
                 <div class="control">
-                    <input class="button is-info is-rounded" type="submit" value="View" onClick="loadGraph()">
+                    <button class="button is-info is-rounded" id="view_button" onClick="loadGraph()">View</button>
                 </div>   
             </div>
             <p class="has-text-danger" id="error"></p> 
-            <input class="button is-rounded is-danger" type="submit" value="Delete" onClick="modal()">
-            <div id="{{graph.id}}">
-                {{graph.html}}
-                <p class="subtitle has-text-left"><strong>File:</strong> {{graph.file}}<br><strong>Read ID:</strong> {{graph.id}}<br><strong>Data Type:</strong> {{type}}<br></p>
-            </div>
+            <input class="button is-rounded is-danger" type="submit" value="Delete all graphs" onClick="modal()">
+        </section>
+        <section class="section has-text-centered">
+            <button class="button is-rounded is-warning" id="clear_button" onClick="modalClear()">Clear Graph</button>
+            <input class="button is-rounded is-success" type="submit" value="Help" onClick="modalHelp()">
+            <br><br>
+            {{graph.html}}
+            <!--p class="subtitle has-text-left"><strong>File:</strong> {{graph.file}}<br><strong>Read ID:</strong> {{graph.id}}<br><strong>Data Type:</strong> {{type}}<br></p-->
         </section>
         <!--script type="text/javascript">
             var figureID = "{{graph.id}}"

@@ -8,6 +8,7 @@ import numpy as np
 from bokeh.plotting import figure
 from bokeh.resources import CDN
 from bokeh.embed import file_html
+from bokeh.models import Title, HoverTool, ColumnDataSource, FreehandDrawTool, BoxEditTool
 #from bokeh.client import pull_session
 #from bokeh.embed import server_session
 import matplotlib
@@ -45,6 +46,7 @@ def results(f5_path=None):
 
     if request.args['processing'] == '1':
         os.remove(f5_path+"/data_"+type+".tsv")
+        return render_template("loading.html", f5_path=f5_path, type=type)
 
     count = 0
     with open(os.path.join(f5_path, "data_"+type+".tsv"), 'a') as out_sum:
@@ -57,18 +59,14 @@ def results(f5_path=None):
                     #print data to a single file
                     if not multi:
                         count += 1
-                        ar = []
-                        for i in data['raw']:
-                            ar.append(str(i))
+                        ar = map(str, data['raw'])
 
                         out_sum.write('{}\t{}\t{}\n'.format(
                                 fast5, data['readID'], '\t'.join(ar)))
                     else:
                         for read in data:
                             count += 1
-                            ar = []
-                            for i in data[read]['raw']:
-                                ar.append(str(i))
+                            ar = map(str, data[read]['raw'])
 
                             out_sum.write('{}\t{}\t{}\n'.format(
                                     fast5, data[read]['readID'], '\t'.join(ar)))
@@ -79,28 +77,34 @@ def view():
 
     f5_path = request.args['f5_path']
     type = request.args['type']
-    num = int(request.args['graph_num'])
-
+    read = request.args.get('read_id')
+    if read is None:
+        read = ""
+    reads = []
+    sig = None
     with open(f5_path+"/data_"+type+".tsv", 'rt') as data:
-        for i, l in enumerate(data):
-            if i == num:
-                l = l.strip('\n')
-                l = l.split('\t')
+        for num, l in enumerate(data):
+            l = l.strip('\n')
+            l = l.split('\t')
+            readID = l[1]
+            reads.append(l[1])
+            if read == readID:
                 fast5 = l[0]
-                readID = l[1]
                 if "." in l[4]:
                     sig = np.array([float(i) for i in l[4:]], dtype=float)
                 else:
                     sig = np.array([int(i) for i in l[4:]], dtype=int)
     #plt.ioff()
-    html_graph = view_sig(sig, type, readID, fast5)
     graph = dict()
-    graph['id'] = 'graph_'+str(readID)
-    graph['file'] = fast5
-    graph['num'] = num
-    graph['json'] = json.dumps(dic)
-    graph['html'] = Markup(html_graph)
-    return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, count=i)
+    if sig is not None:
+        html_graph = view_sig(sig, type, read, fast5)
+        graph['html'] = Markup(html_graph)
+
+    graph['id'] = str(read)
+    #graph['file'] = fast5
+    #graph['num'] = num
+    #graph['json'] = json.dumps(dic)
+    return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, count=len(reads), reads=reads)
 
 #@app.route("/test")
 #def bkapp_page():
@@ -206,30 +210,46 @@ def view_sig(sig, type, name, file):
     '''
     View the squiggle
     '''
-    #fig, ax = plt.subplots(figsize=(10,7))
-    #x = range(len(sig))
-    #y = sig.tolist()
-    #lines = ax.plot(x,y, marker="o")    
-
-    #plugins.connect(fig, plugins.PointLabelTooltip(lines[0],labels=y))
-    #plt.autoscale()
-    #ax.set_xlabel("")
     
+    source = ColumnDataSource(data={
+        'signal'    : sig,
+        'position'  : list(range(0,len(sig)))    
+    })
+    
+    p = figure(plot_width=1400, plot_height=700)
     if type == 'raw':
-        title = "Raw signal for:  "+name
-        #ax.set_title("Raw signal for:  {}".format(name))
-        #ax.set_ylabel("Current - Not scaled")
+        title = "Raw signal for: "+name
+        p.yaxis.axis_label = "Current - Not scaled"
     else:
-        title = "Signal for:  "+name
-        #ax.set_title("Signal for:   {}".format(name))
-        #ax.set_ylabel("Current (pA)")       
+        title = "Signal for: "+name
+        p.yaxis.axis_label = "Current (pA)"       
 
-    #plt.plot(sig, color='dimgray')
-    #graph = mpld3.fig_to_dict(fig)
-    #plt.clf()
+    p.line(x='position',y='signal',line_width=2, source=source)
+    p.add_tools(HoverTool(
+        tooltips=[
+            ('signal', '@signal'),
+            ('position', '@position'),
+        ],
+        formatters={
+            'signal'    : 'printf',
+            'position'    : 'printf'         
+        },
+        mode='vline'
+    ))
+    renderer = p.multi_line([[1,9]], [[5,5]], line_width=4, alpha=0.5, color='green')
+    draw_tool = FreehandDrawTool(renderers=[renderer])
+    p.add_tools(draw_tool)
+    
+    src = ColumnDataSource({
+        'x':[1,1,1], 'y':[1,1,1], 'width':[1,1,1], 'height':[1,1,1]
+    })
+    box_renderer = p.rect('x', 'y', 'width', 'height', fill_alpha=0.4, fill_color='orange', line_color='orange', source=src)
+    box_draw_tool = BoxEditTool(renderers=[box_renderer], empty_value=1, num_objects = 5)
+    p.add_tools(box_draw_tool)
 
-    p = figure(plot_width=1000, plot_height=400)
-    p.line(list(range(0,len(sig))),sig,line_width=2)
+    p.add_layout(Title(text=title), 'above')
+    p.add_layout(Title(text="File: "+file), 'above')
+    
     html = file_html(p, CDN, title)
     return html
     

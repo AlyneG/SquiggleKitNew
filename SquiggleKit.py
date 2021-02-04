@@ -656,12 +656,10 @@ def dicSwitch(i):
     return open_method[i]
 
 def print_data(data, args, fast5):
-    if args.scale:
-        data['raw'] = scale_data(data['raw'])
 
-    ar = []
-    for i in data['raw']:
-        ar.append(str(i))
+    ar = map(str, data['raw'])
+    #for i in data['raw']:
+    #    ar.append(str(i))
 
     if args.extra_info:
         print('{}\t{}\t{}\t{}\t{}\t{}\t{}'.format(fast5, data['readID'],

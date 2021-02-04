@@ -9,11 +9,11 @@
     <body>
         <section class="section has-text-centered">
             <a href="/"><h1 class="title has-text-link">SquiggleKit Web</h1></a>
-            <h2 class="subtitle">A toolkit to help with the display and analysis of Oxford Nanopore raw signal data.</h2>
+            <h2 class="subtitle">A web application to help with the display and analysis of Oxford Nanopore raw signal data.</h2>
         </section>
         <section class="section has-text-centered">
             <h1 class="title is-5">Data from {{count}} files was successfully extracted from</h1><h1 class="title is-5 has-text-info">{{f5_path}}</h1>
-            <a class="button" href="/view_graphs?f5_path={{f5_path}}&type={{type}}&graph_num=0">View Graphs</a>
+            <a class="button" href="/view_graphs?f5_path={{f5_path}}&type={{type}}">View Graphs</a>
             {% if all_data %}
                 {% for data in all_data %}
                     <p>{{data}}</p>
