@@ -78,10 +78,18 @@ def view():
     f5_path = request.args['f5_path']
     type = request.args['type']
     read = request.args.get('read_id')
+    max = request.args.get('max')
+    min = request.args.get('min')
     if read is None:
         read = ""
+    scale = False
+    if max is not None and min is not None:
+        scale = True
+        max = int(max)
+        min = int(min)
     reads = []
     sig = None
+    omitted = 0
     with open(f5_path+"/data_"+type+".tsv", 'rt') as data:
         for num, l in enumerate(data):
             l = l.strip('\n')
@@ -94,24 +102,20 @@ def view():
                     sig = np.array([float(i) for i in l[4:]], dtype=float)
                 else:
                     sig = np.array([int(i) for i in l[4:]], dtype=int)
-    #plt.ioff()
+                if scale:
+                    old = len(sig)
+                    sig = scale_outliers(sig, max, min)
+                    omitted = old - len(sig)
     graph = dict()
     if sig is not None:
         html_graph = view_sig(sig, type, read, fast5)
         graph['html'] = Markup(html_graph)
 
     graph['id'] = str(read)
-    #graph['file'] = fast5
-    #graph['num'] = num
-    #graph['json'] = json.dumps(dic)
+    graph['max'] = max
+    graph['min'] = min
+    graph['omitted'] = omitted
     return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, count=len(reads), reads=reads)
-
-#@app.route("/test")
-#def bkapp_page():
-#    with pull_session(url="http://localhost:5006/sliders") as session:
-#        session.document.root[0].children[1].title.text ="special sliders"
-#        script = sever_session(session_id=session_id, url='special sliders')
-#        return render_template("embed.html", script=script, template="Flask")
 
 @app.route("/delete")
 def delete():
@@ -200,11 +204,11 @@ def convert_to_pA_numpy(d, digitisation, range, offset):
     raw_unit = range / digitisation
     return (d + offset) * raw_unit
 
-#def scale_outliers(sig, args):
+def scale_outliers(sig, max, min):
     ''' Scale outliers to within m stdevs of median '''
     ''' Remove outliers that don't fit within the specified bounds '''
-#    k = (sig > args.lim_low) & (sig < args.lim_hi)
-#    return sig[k]
+    k = (sig > min) & (sig < max)
+    return sig[k]
 
 def view_sig(sig, type, name, file):
     '''
@@ -216,7 +220,7 @@ def view_sig(sig, type, name, file):
         'position'  : list(range(0,len(sig)))    
     })
     
-    p = figure(plot_width=1400, plot_height=700)
+    p = figure(plot_width=1200, plot_height=700)
     if type == 'raw':
         title = "Raw signal for: "+name
         p.yaxis.axis_label = "Current - Not scaled"
