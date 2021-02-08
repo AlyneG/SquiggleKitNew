@@ -70,12 +70,58 @@
                     document.getElementById("threshold_error").innerHTML="Threshold values invalid. Max value cannot be lower than Min value and both must be >= 0."
                     document.getElementById("threshold_error").style.display="block"
                 } else {
-                    window.location.replace("/view_graphs?f5_path={{f5_path}}&type={{type}}&read_id={{graph.id}}&max=".concat(max).concat("&min=").concat(min))
+                    new_url = window.location.href
+                    new_url = new_url.replace(/\&max=[0-9]*/g, "")
+                    new_url = new_url.replace(/\&min=[0-9]*/g, "")
+                    window.location.replace(new_url.concat("&max=").concat(max).concat("&min=").concat(min))
                 }
             }
     
             function reset(){
                 window.location.replace("/view_graphs?f5_path={{f5_path}}&type={{type}}&read_id={{graph.id}}")
+            }
+
+            function showHSRegions(){
+                //do checks to make sure everything is valid
+                section = document.getElementsByName("section")
+                for (i=0, length=section.length; i< length; i++){
+                    if (section[i].checked) {
+                        section = section[i].value
+                        break
+                    }
+                }
+                error = document.getElementById("allow_error").value
+                error_win = document.getElementById("window").value
+                min_win = document.getElementById("min_window").value
+                max_merge = document.getElementById("merge").value
+                stdev_scale = document.getElementById("stdev_scale").value
+                //if valid, redirect
+                new_url = window.location.href
+                new_url = new_url.replace(/\&start=[0-9]*/g, "")
+                new_url = new_url.replace(/\&end=[0-9]*/g, "")
+                new_url = new_url.replace(/\&error=[0-9]*/g, "")
+                new_url = new_url.replace(/\&error_win=[0-9]*/g, "")
+                new_url = new_url.replace(/\&min_win=[0-9]*/g, "")
+                new_url = new_url.replace(/\&merge=[0-9]*/g, "")
+                new_url = new_url.replace(/\&stdev_scale=[0-9]*\.[0-9]*/g, "")
+
+                if(section != "All"){
+                    start = document.getElementById("start").value
+                    end = document.getElementById("end").value
+                    new_url = new_url.concat("&start=").concat(start).concat("&end=").concat(end)
+                }
+
+                window.location.replace(new_url.concat("&error=").concat(error).concat("&error_win=").concat(error_win)
+                                        .concat("&min_win=").concat(min_win).concat("&max_merge=").concat(max_merge)
+                                        .concat("&stdev_scale=").concat(stdev_scale))
+            }
+
+            function showSectionParams(){
+                document.getElementById("section_params").style.display="block"
+            }
+
+            function hideSectionParams(){
+                document.getElementById("section_params").style.display="none"
             }
         </script>
     </head>
@@ -176,7 +222,12 @@
 	</div>
 
         <section class="section has-text-centered">
-            <h1 class="title is-5">Data of {{count}} reads were successfully extracted from</h1><h1 class="title is-5 has-text-info">{{f5_path}}</h1>
+            {% if type == "raw" %}
+                <h1 class="title is-5">Data of {{count}} reads were successfully extracted from</h1>
+            {% else %}
+                <h1 class="title is-5">Data of {{count}} reads were successfully extracted and converted to pA from</h1>
+            {% endif %}
+            <h1 class="title is-5 has-text-info">{{f5_path}}</h1>
             <p>Select a readID</p><br>
             <div class="field has-addons has-addons-centered">
                 <div class="control">
@@ -207,14 +258,83 @@
             <br><br>
 
             <section class="columns">
-                <section class="column">
-                    <strong>Threshold</strong><br>
-                    <p>Max</p><input id="max" type="number" min="0" value={{graph.max}}><br>
-                    <p>Min</p><input id="min" type="number" min="0" value={{graph.min}}><br><br>
+                <section class="column has-text-left">
+                    <strong class="has-text-link">Threshold</strong><br>
+                    <div class="field">
+                        <label class="label">Max</label>
+                        <div class="control">
+                            <input id="max" type="number" min="0" value={{graph.max}}><br>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Min</label>
+                        <div class="control">
+                            <input id="min" type="number" min="0" value={{graph.min}}>
+                        </div>
+                    </div>
                     <button class="button is-info is-small" onClick=updateModal()>Set</button> <button class="button is-small" onClick=reset()>Reset</button> <br><br>
-                <small id="threshold_error" class="has-text-danger" style="display: none"></small><br>
-                <small>{{graph.omitted}} points have been omitted due to the threshold</small>
-                </section>
+                    <p id="threshold_error" class="help has-text-danger" style="display: none"></p>
+                    <small>{{graph.omitted}} point/s have been omitted due to the threshold</small><br><br>
+                    <strong class="has-text-link">View Homopolymer/Stall Regions</strong><br>
+                        <div class="field">
+                            <strong>Section</strong>
+                            <div class="control">
+                                <label class="radio">
+                                <input type="radio" name="section" checked onClick="hideSectionParams()" value="All">
+                                All
+                                </label>
+                                <label class="radio">
+                                <input type="radio" name="section" onClick="showSectionParams()" value="Selected">
+                                Selected
+                                </label>
+                            </div>
+                        </div>
+                        <div class="field" id="section_params" style="display: none">
+                            <label class="label">Start</label>
+                            <div class="control">
+                                <input id="start" type="number" min=0 step=1>
+                            </div>
+                            <label class="label">End</label>
+                            <div class="control">
+                                <input id="end" type="number" min=0 step=1>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="label">Allowable Error</label>
+                            <div class="control">
+                                <input id="allow_error" type="number" min=0 step=1 value=5>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="label">Error Window Size</label>
+                            <div class="control">
+                                <input id="window" type="number" min=0 step=1 value=50>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="label">Min Window Size</label>
+                            <div class="control">
+                                <input id="min_window" type="number" min=0 step=1 value=150>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="label">Max Merge Distance</label>
+                            <div class="control">
+                                <input id="merge" type="number" min=0 step=1 value=50>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label class="label">STDev Scale Factor</label>
+                            <div class="control">
+                                <input id="stdev_scale" type="number" min=0 step=0.01 value=0.75>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <div class="control">
+                                <button class="button is-small is-info" onClick=showHSRegions()>View</button>
+                            </div>
+                        </div>
+                    </section>
                 <section class="column">
                     {{graph.html|safe}}
                 </section>

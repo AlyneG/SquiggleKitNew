@@ -8,7 +8,7 @@ import numpy as np
 from bokeh.plotting import figure
 from bokeh.resources import CDN
 from bokeh.embed import file_html
-from bokeh.models import Title, HoverTool, ColumnDataSource, FreehandDrawTool, BoxEditTool
+from bokeh.models import Title, HoverTool, ColumnDataSource, FreehandDrawTool, BoxEditTool, BoxAnnotation
 #from bokeh.client import pull_session
 #from bokeh.embed import server_session
 import matplotlib
@@ -38,7 +38,8 @@ def results(f5_path=None):
 
     f5_path = request.args['f5_path']
     type = request.args['type']
-
+    if not os.path.isdir(f5_path):
+        return render_template("error.html")
     if request.args['processing'] == '0':
         if os.path.isfile(f5_path+"/data_"+type+".tsv"):
             exception = "Data file for already exists"
@@ -80,16 +81,49 @@ def view():
     read = request.args.get('read_id')
     max = request.args.get('max')
     min = request.args.get('min')
+    start = request.args.get('start')
+    end = request.args.get('end')
+    error = request.args.get('error')
+    error_win = request.args.get('error_win')
+    min_win = request.args.get('min_win')
+    max_merge = request.args.get('max_merge')
+    stdev_scale = request.args.get('stdev_scale')
+
     if read is None:
         read = ""
+
     scale = False
     if max is not None and min is not None:
         scale = True
         max = int(max)
         min = int(min)
+    
+    segment = False
+    if error is not None and error_win is not None and min_win is not None and max_merge is not None and stdev_scale is not None:
+        segment = True
+        if start is None:
+            start = 0
+        else:
+            start = int(start)
+        if end is None:
+            end = "all"
+        else:
+            end = int(end)
+        error = int(error)
+        error_win = int(error_win)
+        min_win = int(min_win)
+        max_merge = int(max_merge)
+        std_scale = float(stdev_scale)
+
+
     reads = []
     sig = None
+    segs = None
     omitted = 0
+    
+    if not os.path.isfile(f5_path+"/data_"+type+".tsv"):
+        return render_template("error.html")        
+    
     with open(f5_path+"/data_"+type+".tsv", 'rt') as data:
         for num, l in enumerate(data):
             l = l.strip('\n')
@@ -106,11 +140,16 @@ def view():
                     old = len(sig)
                     sig = scale_outliers(sig, max, min)
                     omitted = old - len(sig)
+                if segment:
+                    if end !="all":
+                        section = sig[:end]
+                    section = sig[start:]
+                    segs = get_segs(section, error, error_win, min_win, max_merge, std_scale)
     graph = dict()
     if sig is not None:
-        html_graph = view_sig(sig, type, read, fast5)
+        html_graph = view(sig, segs, type, read, fast5)
         graph['html'] = Markup(html_graph)
-
+        
     graph['id'] = str(read)
     graph['max'] = max
     graph['min'] = min
@@ -210,7 +249,7 @@ def scale_outliers(sig, max, min):
     k = (sig > min) & (sig < max)
     return sig[k]
 
-def view_sig(sig, type, name, file):
+def view(sig, segs, type, name, file):
     '''
     View the squiggle
     '''
@@ -254,8 +293,85 @@ def view_sig(sig, type, name, file):
     p.add_layout(Title(text=title), 'above')
     p.add_layout(Title(text="File: "+file), 'above')
     
+    if segs is not None:
+        for i, j in segs:
+            b = BoxAnnotation(left=i, right=j, fill_color='pink', fill_alpha=0.5)
+            p.add_layout(b)
+
     html = file_html(p, CDN, title)
     return html
+
+def get_segs(sig, error, error_win, min_win, max_merge, std_scale):
+    '''
+    Get segments from signal
+    This works by running through the signal and finding regions that are above
+    the bot and below the top parameters, with some error tollerance, for a
+    minimum window of length.
+    '''
+
+    mn = sig.min()
+    mx = sig.max()
+    mean = np.mean(sig)
+    median = np.median(sig)
+    # use this with outlier rejection to fix stdev thresholds
+    stdev = np.std(sig)
+    top = median + (stdev * std_scale)
+    bot = median - (stdev * std_scale)
+
+    # parameter tuning visualisation
+    # TODO: Put tuning plots here
+
+    # this is the algo. Simple yet effective
+    prev = False  # previous string
+    err = 0       # total error
+    prev_err = 0  # consecutive error
+    c = 0         # counter
+    w = error_win        # window to increase total error thresh
+    seg_dist = max_merge # distance between 2 segs to be merged as one
+    start = 0     # start pos
+    end = 0       # end pos
+    segs = []     # segments [(start, stop)]
+    for i in range(len(sig)):
+        a = sig[i]
+        if a < top and a > bot: # If datapoint is within range
+            if not prev:
+                start = i
+                prev = True
+            c += 1 # increase counter
+            w += 1 # increase window corrector count
+            if prev_err:
+                prev_err = 0
+            if c >= min_win and c >= w and not c % w: # if current window longer than detect limit, and corrector, and is divisible by corrector
+                err -= 1 # drop current error count by 1
+        else:
+            if prev and err < error:
+                c += 1
+                err += 1
+                prev_err += 1
+                if c >= min_win and c >= w and not c % w:
+                    err -= 1
+            elif prev and (c >= min_win or not segs and c >= min_win * 0.25):
+                end = i - prev_err # go back to where error stretch began for accurate cutting
+                prev = False
+                if segs and start - segs[-1][1] < seg_dist: # if segs very close, merge them
+                    segs[-1][1] = end
+                else:
+                    segs.append([start, end]) # save segment
+                c = 0
+                err = 0
+                prev_err = 0
+            elif prev:
+                prev = False
+                c = 0
+                err = 0
+                prev_err = 0
+            else:
+                continue
+
+    if segs:
+        return segs
+    else:
+        return False
 
 if __name__ == "__main__":
     app.run(port="8080", debug=True)
