@@ -11,12 +11,6 @@ from bokeh.embed import file_html
 from bokeh.models import Title, HoverTool, ColumnDataSource, FreehandDrawTool, BoxEditTool, BoxAnnotation
 #from bokeh.client import pull_session
 #from bokeh.embed import server_session
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-plt.rcParams.update({'font.size': 14})
-import mpld3
-from mpld3 import plugins
 import json
 
 app = Flask(__name__)
@@ -87,7 +81,8 @@ def view():
     error_win = request.args.get('error_win')
     min_win = request.args.get('min_win')
     max_merge = request.args.get('max_merge')
-    stdev_scale = request.args.get('stdev_scale')
+    std_scale = request.args.get('stdev_scale')
+    stall_len = request.args.get('stall_len')
 
     if read is None:
         read = ""
@@ -99,7 +94,7 @@ def view():
         min = int(min)
     
     segment = False
-    if error is not None and error_win is not None and min_win is not None and max_merge is not None and stdev_scale is not None:
+    if error is not None and error_win is not None and min_win is not None and max_merge is not None and std_scale is not None and stall_len is not None:
         segment = True
         if start is None:
             start = 0
@@ -113,7 +108,8 @@ def view():
         error_win = int(error_win)
         min_win = int(min_win)
         max_merge = int(max_merge)
-        std_scale = float(stdev_scale)
+        std_scale = float(std_scale)
+        stall_len = float(stall_len)
 
 
     reads = []
@@ -142,18 +138,28 @@ def view():
                     omitted = old - len(sig)
                 if segment:
                     if end !="all":
-                        section = sig[:end]
-                    section = sig[start:]
-                    segs = get_segs(section, error, error_win, min_win, max_merge, std_scale)
+                        section = sig[start:end]
+                    else:
+                        section = sig[start:]
+                    segs = get_segs(section, error, error_win, min_win, max_merge, std_scale, stall_len)
     graph = dict()
     if sig is not None:
         html_graph = view(sig, segs, type, read, fast5)
         graph['html'] = Markup(html_graph)
-        
-    graph['id'] = str(read)
-    graph['max'] = max
-    graph['min'] = min
-    graph['omitted'] = omitted
+        graph['id'] = str(read)
+        graph['max'] = max
+        graph['min'] = min
+        graph['omitted'] = omitted
+        if segment:
+            if end != "all":
+                graph['start'] = start
+                graph['end'] = end
+            graph['error'] = error
+            graph['error_win'] = error_win
+            graph['min_win'] = min_win
+            graph['max_merge'] = max_merge
+            graph['std_scale'] = std_scale
+            graph['stall_len'] = stall_len
     return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, count=len(reads), reads=reads)
 
 @app.route("/delete")
@@ -293,7 +299,7 @@ def view(sig, segs, type, name, file):
     p.add_layout(Title(text=title), 'above')
     p.add_layout(Title(text="File: "+file), 'above')
     
-    if segs is not None:
+    if segs:
         for i, j in segs:
             b = BoxAnnotation(left=i, right=j, fill_color='pink', fill_alpha=0.5)
             p.add_layout(b)
@@ -301,7 +307,7 @@ def view(sig, segs, type, name, file):
     html = file_html(p, CDN, title)
     return html
 
-def get_segs(sig, error, error_win, min_win, max_merge, std_scale):
+def get_segs(sig, error, error_win, min_win, max_merge, std_scale, stall_len):
     '''
     Get segments from signal
     This works by running through the signal and finding regions that are above
@@ -350,7 +356,7 @@ def get_segs(sig, error, error_win, min_win, max_merge, std_scale):
                 prev_err += 1
                 if c >= min_win and c >= w and not c % w:
                     err -= 1
-            elif prev and (c >= min_win or not segs and c >= min_win * 0.25):
+            elif prev and (c >= min_win or not segs and c >= min_win * stall_len):
                 end = i - prev_err # go back to where error stretch began for accurate cutting
                 prev = False
                 if segs and start - segs[-1][1] < seg_dist: # if segs very close, merge them

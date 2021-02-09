@@ -43,6 +43,31 @@
                 window.location.reload()
             }
 
+            function modalClearAll(){
+                document.getElementById("clear_all_modal").classList.add("is-active")
+            }
+
+            function cancelClearAll(){
+                document.getElementById("clear_all_modal").classList.remove("is-active")
+            }
+
+            function clearGraphAll(){
+                document.getElementById("clear_all_modal").classList.remove("is-active")
+                document.getElementById("clear_all_button").classList.add("is-loading")
+                new_url = window.location.href
+                new_url = new_url.replace(/\&start=[0-9]*/g, "")
+                new_url = new_url.replace(/\&end=[0-9]*/g, "")
+                new_url = new_url.replace(/\&error=[0-9]*/g, "")
+                new_url = new_url.replace(/\&error_win=[0-9]*/g, "")
+                new_url = new_url.replace(/\&min_win=[0-9]*/g, "")
+                new_url = new_url.replace(/\&max_merge=[0-9]*/g, "")
+                new_url = new_url.replace(/\&stdev_scale=[0-9]*\.[0-9]*/g, "")
+                new_url = new_url.replace(/\&stall_len=[0-9]*\.[0-9]*/g, "")
+                new_url = new_url.replace(/\&max=[0-9]*/g, "")
+                new_url = new_url.replace(/\&min=[0-9]*/g, "")
+                window.location.replace(new_url)
+            }
+
             function modalHelp(){
                 document.getElementById("help_modal").classList.add("is-active")
             }
@@ -78,11 +103,24 @@
             }
     
             function reset(){
-                window.location.replace("/view_graphs?f5_path={{f5_path}}&type={{type}}&read_id={{graph.id}}")
+                new_url = window.location.href
+                new_url = new_url.replace(/\&max=[0-9]*/g, "")
+                new_url = new_url.replace(/\&min=[0-9]*/g, "")
+                window.location.replace(new_url)
             }
 
             function showHSRegions(){
-                //do checks to make sure everything is valid
+                //remove all previous data
+                new_url = window.location.href
+                new_url = new_url.replace(/\&start=[0-9]*/g, "")
+                new_url = new_url.replace(/\&end=[0-9]*/g, "")
+                new_url = new_url.replace(/\&error=[0-9]*/g, "")
+                new_url = new_url.replace(/\&error_win=[0-9]*/g, "")
+                new_url = new_url.replace(/\&min_win=[0-9]*/g, "")
+                new_url = new_url.replace(/\&max_merge=[0-9]*/g, "")
+                new_url = new_url.replace(/\&stdev_scale=[0-9]*\.[0-9]*/g, "")
+                new_url = new_url.replace(/\&stall_len=[0-9]*\.[0-9]*/g, "")
+
                 section = document.getElementsByName("section")
                 for (i=0, length=section.length; i< length; i++){
                     if (section[i].checked) {
@@ -90,30 +128,43 @@
                         break
                     }
                 }
+
+                if(section != "All"){
+                    start = document.getElementById("start").value
+                    end = document.getElementById("end").value
+                    if(!(start&&end)){
+                        document.getElementById("section_error").innerHTML="Please fill in the Start and End positions to select a section."
+                        document.getElementById("section_error").style.display="block"
+                        return
+                    } else if ((parseInt(end) <= parseInt(start))||(parseInt(end) <= 0)||(parseInt(start) < 0)){
+                        document.getElementById("section_error").innerHTML="Start must be smaller than End value, and >= 0. End must be > 0."
+                        document.getElementById("section_error").style.display="block"
+                        return
+                    }
+                    new_url = new_url.concat("&start=").concat(start).concat("&end=").concat(end)
+                }
+
                 error = document.getElementById("allow_error").value
                 error_win = document.getElementById("window").value
                 min_win = document.getElementById("min_window").value
                 max_merge = document.getElementById("merge").value
                 stdev_scale = document.getElementById("stdev_scale").value
-                //if valid, redirect
-                new_url = window.location.href
-                new_url = new_url.replace(/\&start=[0-9]*/g, "")
-                new_url = new_url.replace(/\&end=[0-9]*/g, "")
-                new_url = new_url.replace(/\&error=[0-9]*/g, "")
-                new_url = new_url.replace(/\&error_win=[0-9]*/g, "")
-                new_url = new_url.replace(/\&min_win=[0-9]*/g, "")
-                new_url = new_url.replace(/\&merge=[0-9]*/g, "")
-                new_url = new_url.replace(/\&stdev_scale=[0-9]*\.[0-9]*/g, "")
+                stall_len = document.getElementById("stall_len").value
 
-                if(section != "All"){
-                    start = document.getElementById("start").value
-                    end = document.getElementById("end").value
-                    new_url = new_url.concat("&start=").concat(start).concat("&end=").concat(end)
+                if (!(error&&error_win&&min_win&&max_merge&&stdev_scale&&stall_len)){
+                    document.getElementById("segmenter_error").innerHTML="Please fill in all fields."
+                    document.getElementById("segmenter_error").style.display="block"
+                    return
+                } else if((parseInt(error) < 0)||(parseInt(error_win) < 0)||(parseInt(min_win) < 0)||(parseInt(max_merge) < 0)||(parseInt(stdev_scale) < 0)||(parseInt(stall_len<0))) {
+                    document.getElementById("segmenter_error").innerHTML="Values invalid. All values must be >=0."
+                    document.getElementById("segmenter_error").style.display="block"
+                    return
                 }
 
+                //if valid, redirect
                 window.location.replace(new_url.concat("&error=").concat(error).concat("&error_win=").concat(error_win)
                                         .concat("&min_win=").concat(min_win).concat("&max_merge=").concat(max_merge)
-                                        .concat("&stdev_scale=").concat(stdev_scale))
+                                        .concat("&stdev_scale=").concat(stdev_scale).concat("&stall_len=").concat(stall_len))
             }
 
             function showSectionParams(){
@@ -122,6 +173,30 @@
 
             function hideSectionParams(){
                 document.getElementById("section_params").style.display="none"
+            }
+
+            function setDefaults(){
+                document.getElementById("All").checked = true
+                document.getElementById("section_params").style.display="none"
+                document.getElementById("allow_error").value = 5
+                document.getElementById("window").value = 50
+                document.getElementById("min_window").value = 150
+                document.getElementById("merge").value = 50
+                document.getElementById("stdev_scale").value = 0.75
+                document.getElementById("stall_len").value = 0.25
+            }
+            
+            function resetSegmenter(){
+                new_url = window.location.href
+                new_url = new_url.replace(/\&start=[0-9]*/g, "")
+                new_url = new_url.replace(/\&end=[0-9]*/g, "")
+                new_url = new_url.replace(/\&error=[0-9]*/g, "")
+                new_url = new_url.replace(/\&error_win=[0-9]*/g, "")
+                new_url = new_url.replace(/\&min_win=[0-9]*/g, "")
+                new_url = new_url.replace(/\&merge=[0-9]*/g, "")
+                new_url = new_url.replace(/\&stdev_scale=[0-9]*\.[0-9]*/g, "")
+                new_url = new_url.replace(/\&stall_len=[0-9]*\.[0-9]*/g, "")
+                window.location.replace(new_url)
             }
         </script>
     </head>
@@ -142,7 +217,7 @@
                 Are you sure you would like to delete the signal file? This cannot be retrieved and will need to be recreated if you wish to view the data again.
             </section>
             <footer class="modal-card-foot">
-                <button class="button is-danger" onClick="deleteData()">Yes</button>
+                <button class="button is-success" onClick="deleteData()">Yes</button>
                 <button class="button" onClick="cancel()">Cancel</button>
             </footer>
         </div>
@@ -152,11 +227,11 @@
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
-                <p class="modal-card-title">Confirm Clear Graph</p>
+                <p class="modal-card-title">Confirm Clear Graph Annotations</p>
                 <button class="delete" aria-label="close" onClick="cancelClear()"></button>
             </header>
             <section class="modal-card-body">
-                Are you sure you would like to clear the graph? This will remove all the current drawings and reset the graph to its original state.
+                Are you sure you would like to clear the graph annotations? This will remove all the current drawings.
             </section>
             <footer class="modal-card-foot">
                 <button class="button is-success" onClick="clearGraph()">Yes</button>
@@ -165,39 +240,65 @@
         </div>
 	</div>
 
+	<div class="modal" id="clear_all_modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Confirm Clear Graph</p>
+                <button class="delete" aria-label="close" onClick="cancelClearAll()"></button>
+            </header>
+            <section class="modal-card-body">
+                Are you sure you would like to clear the graph? This will remove all the current drawings, thresholds and segments and reset the graph to its original state.
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-success" onClick="clearGraphAll()">Yes</button>
+                <button class="button" onClick="cancelClearAll()">Cancel</button>
+            </footer>
+        </div>
+	</div>
+
 	<div class="modal" id="help_modal">
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
-                <p class="modal-card-title">Help</p>
+                <p class="modal-card-title"><strong>Help</strong></p>
                 <button class="delete" aria-label="close" onClick="closeHelp()"></button>
             </header>
             <section class="modal-card-body">
-                <p>
-                    To view a graph, select the desired readID from the drop down menu and click the "View" button. To remove all annotations and completely reset the graph, click the "Clear Graph" button. To delete the extracted data file, click the "Delete all graphs" button.<br>
-                    <br><strong>Tools</strong><br>
-                    The tools are located on the right of the graph in a toolbar. Hover over the tool to find out its name. To use the tool, you must activate it by clicking on it. If it has a blue line on the left side, it is activated.<br>
-                    <br><strong>Pan</strong><br>
-                        Click and drag to move across the plot.<br>
-                    <br><strong>Box Zoom</strong><br>
-                        Click and drag to define a box. The plot will automatically zoom in to the defined box.<br>
-                    <br><strong>Wheel Zoom</strong><br>
-                        Use the wheel on a mouse or pinch and drag a mouse pad while the cursor is in the plot to zoom in and out.<br>
-                    <br><strong>Box Edit Tool</strong><br>
-                        Add, move and delete boxes for highlighting specific sections. Upper limit is 5 boxes at a time, after which the oldest box will be replaced by the newest. Hold SHIFT while selecting to select more than one at a time.<br>
-                        <b>Add:</b> Hold SHIFT and click and drag with your mouse.<br>
-                        <b>Move:</b> Click on the desired box/es and drag.<br>               
-                        <b>Delete:</b> Click on the desired box/es and press BACKSPACE/DELETE (for Mac users).<br>
-                    <br><strong>Freehand Draw Tool</strong><br>
-                        Write and draw on the plot.<br>
-                        <b>Add:</b> Simply click and drag. The line will be counted as one until the click is released.<br>
-                        <b>Move:</b> Click on the desired line/s and drag.<br>               
-                        <b>Delete:</b> Click on the desired line/s and press BACKSPACE/DELETE (for Mac users).<br>
-                    <br><strong>Save</strong><br>
-                        Click save to download a png of the graph exactly as is. This includes any zoom selected or drawings/annotations that have been added. 
-                    <br><strong>Reset</strong><br>
-                        Reset will only realign the graph with the original setting. It does not remove any drawings/annotations added.
-                </p>
+                <div class="content">
+                        <p>To view a graph, select the desired readID from the drop down menu and click the "View" button. To remove all annotations, click the "Clear Annotations" button. To delete the extracted data file, click the "Delete All Graphs" button.</p>
+                        <hr>
+                        <h4>ANALYSIS</h4>
+                        <p>On the left of the graph there are 2 options that can be used for further analysis of the graphs.</p> 
+                        <h6>THRESHOLD</h6>
+                        <p>Set a lower and upper threshold where points beyond the range will be omitted from the graph. Both min and max values must be >0, and integer values. The "Reset" button removes any changes to the threshold.</p>
+                        <h6>VIEW HOMOPOLYMER/STALL REGIONS</h6>
+                        <p>Through the use of the segmenter portion of the SquiggleKit, the stall/homopolymer regions of the graph will be identified and highlighted in pink on the graph.</p>
+                        <hr>
+                        <h4>TOOLS</h4>
+                        <p>The tools are located on the right of the graph in a toolbar. Hover over the tool to find out its name. To use the tool, you must activate it by clicking on it. If it has a blue line on the left side, it is activated.</p>
+                        <h6>PAN</h6>
+                        <p>Click and drag to move across the plot.</p>
+                        <h6>BOX ZOOM</h6>
+                        <p>Click and drag to define a box. The plot will automatically zoom in to the defined box.</p>
+                        <h6>WHEEL ZOOM</h6>
+                        <p>Use the wheel on a mouse or pinch and drag a mouse pad while the cursor is in the plot to zoom in and out.</p>
+                        <h6>BOX EDIT TOOL</h6>
+                        <p>Add, move and delete boxes for highlighting specific sections. Upper limit is 5 boxes at a time, after which the oldest box will be replaced by the newest. Hold SHIFT while selecting to select more than one at a time.<br>
+                            <b>Add:</b> Hold SHIFT and click and drag with your mouse.<br>
+                            <b>Move:</b> Click on the desired box/es and drag.<br>               
+                            <b>Delete:</b> Click on the desired box/es and press BACKSPACE/DELETE (for Mac users).</p>
+                        <h6>FREEHAND DRAW TOOL</h6>
+                        <p>Write and draw on the plot.<br>
+                            <b>Add:</b> Simply click and drag. The line will be counted as one until the click is released.<br>
+                            <b>Move:</b> Click on the desired line/s and drag.<br>               
+                            <b>Delete:</b> Click on the desired line/s and press BACKSPACE/DELETE (for Mac users).</p>
+                        <h6>SAVE</h6>
+                        <p>Click save to download a png of the graph exactly as is. This includes any zoom selected or drawings/annotations that have been added.</p> 
+                        <h6>RESET</h6>
+                        <p>Reset will only realign the graph with the original setting. It does not remove any drawings/annotations added.</p>
+                    </p>
+                </div>
             </section>
             <footer class="modal-card-foot">
             </footer>
@@ -249,12 +350,13 @@
                 </div>   
             </div>
             <p class="has-text-danger" id="error"></p> 
-            <input class="button is-rounded is-danger" type="submit" value="Delete all graphs" onClick="modal()">
+            <input class="button is-rounded is-danger" type="submit" value="Delete All Graphs" onClick="modal()">
             <input class="button is-rounded is-success" type="submit" value="Help" onClick="modalHelp()">
         </section>
         {% if graph.id|length %}
         <section class="section has-text-centered">
-            <button class="button is-rounded is-warning" id="clear_button" onClick="modalClear()">Clear graph</button>
+            <button class="button is-rounded is-warning" id="clear_button" onClick="modalClear()">Clear Annotations</button>
+            <button class="button is-rounded" id="clear_all_button" onClick="modalClearAll()">Reset</button>
             <br><br>
 
             <section class="columns">
@@ -280,60 +382,85 @@
                             <strong>Section</strong>
                             <div class="control">
                                 <label class="radio">
-                                <input type="radio" name="section" checked onClick="hideSectionParams()" value="All">
+                                {% if graph.end %}
+                                <input type="radio" name="section" onClick="hideSectionParams()" value="All" id="All">
                                 All
                                 </label>
                                 <label class="radio">
-                                <input type="radio" name="section" onClick="showSectionParams()" value="Selected">
+                                <input type="radio" name="section" onClick="showSectionParams()" value="Selected" id="Selected" checked>
+                                Selected
+                                </label>
+                            </div>
+                        </div>
+                        <div class="field" id="section_params" style="display: block">
+                                {% else %}
+                                <input type="radio" name="section" onClick="hideSectionParams()" value="All" id="All" checked>
+                                All
+                                </label>
+                                <label class="radio">
+                                <input type="radio" name="section" onClick="showSectionParams()" value="Selected" id="Selected">
                                 Selected
                                 </label>
                             </div>
                         </div>
                         <div class="field" id="section_params" style="display: none">
+                                {% endif %}
+                                
                             <label class="label">Start</label>
                             <div class="control">
-                                <input id="start" type="number" min=0 step=1>
+                                <input id="start" type="number" min=0 step=1 value={{graph.start}}>
                             </div>
                             <label class="label">End</label>
                             <div class="control">
-                                <input id="end" type="number" min=0 step=1>
+                                <input id="end" type="number" min=0 step=1 value={{graph.end}}>
                             </div>
+                            <p id="section_error" class="help has-text-danger" style="display: none"></p>
                         </div>
                         <div class="field">
                             <label class="label">Allowable Error</label>
                             <div class="control">
-                                <input id="allow_error" type="number" min=0 step=1 value=5>
+                                <input id="allow_error" type="number" min=0 step=1 value={{graph.error}}>
                             </div>
                         </div>
                         <div class="field">
                             <label class="label">Error Window Size</label>
                             <div class="control">
-                                <input id="window" type="number" min=0 step=1 value=50>
+                                <input id="window" type="number" min=0 step=1 value={{graph.error_win}}>
                             </div>
                         </div>
                         <div class="field">
                             <label class="label">Min Window Size</label>
                             <div class="control">
-                                <input id="min_window" type="number" min=0 step=1 value=150>
+                                <input id="min_window" type="number" min=0 step=1 value={{graph.min_win}}>
                             </div>
                         </div>
                         <div class="field">
                             <label class="label">Max Merge Distance</label>
                             <div class="control">
-                                <input id="merge" type="number" min=0 step=1 value=50>
+                                <input id="merge" type="number" min=0 step=1 value={{graph.max_merge}}>
                             </div>
                         </div>
                         <div class="field">
                             <label class="label">STDev Scale Factor</label>
                             <div class="control">
-                                <input id="stdev_scale" type="number" min=0 step=0.01 value=0.75>
+                                <input id="stdev_scale" type="number" min=0 step=0.01 value={{graph.std_scale}}>
                             </div>
                         </div>
                         <div class="field">
+                            <label class="label">Stall Length</label>
                             <div class="control">
-                                <button class="button is-small is-info" onClick=showHSRegions()>View</button>
+                                <input id="stall_len" type="number" min=0 step=0.01 value={{graph.stall_len}}>
                             </div>
                         </div>
+                        <!--help="Minimum percentage of minimum window segment for initial stall segment")-->
+                        <div class="field">
+                            <div class="control">
+                                <button class="button is-small is-info" onClick=showHSRegions()>View</button>
+                                <button class="button is-small is-success" onClick=setDefaults()>Default</button>
+                                <button class="button is-small" onClick=resetSegmenter()>Reset</button>
+                            </div>
+                        </div>
+                        <p id="segmenter_error" class="help has-text-danger" style="display: none"></p>
                     </section>
                 <section class="column">
                     {{graph.html|safe}}
