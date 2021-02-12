@@ -83,6 +83,8 @@ def view():
     max_merge = request.args.get('max_merge')
     std_scale = request.args.get('stdev_scale')
     stall_len = request.args.get('stall_len')
+    height = request.args.get('height')
+    width = request.args.get('width')
 
     if read is None:
         read = ""
@@ -111,6 +113,12 @@ def view():
         std_scale = float(std_scale)
         stall_len = float(stall_len)
 
+    if height is not None and width is not None:
+        height = int(height)
+        width = int(width)
+    else:
+        height = 700
+        width = 1400
 
     reads = []
     sig = None
@@ -144,7 +152,7 @@ def view():
                     segs = get_segs(section, error, error_win, min_win, max_merge, std_scale, stall_len)
     graph = dict()
     if sig is not None:
-        html_graph = view(sig, segs, type, read, fast5)
+        html_graph = view(sig, segs, type, read, fast5, height, width)
         graph['html'] = Markup(html_graph)
         graph['id'] = str(read)
         graph['max'] = max
@@ -160,6 +168,8 @@ def view():
             graph['max_merge'] = max_merge
             graph['std_scale'] = std_scale
             graph['stall_len'] = stall_len
+        graph['height'] = height
+        graph['width'] = width
     return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, count=len(reads), reads=reads)
 
 @app.route("/delete")
@@ -255,7 +265,7 @@ def scale_outliers(sig, max, min):
     k = (sig > min) & (sig < max)
     return sig[k]
 
-def view(sig, segs, type, name, file):
+def view(sig, segs, type, name, file, height, width):
     '''
     View the squiggle
     '''
@@ -265,7 +275,8 @@ def view(sig, segs, type, name, file):
         'position'  : list(range(0,len(sig)))    
     })
     
-    p = figure(plot_width=1200, plot_height=700)
+    p = figure(plot_width=width, plot_height=height)
+
     if type == 'raw':
         title = "Raw signal for: "+name
         p.yaxis.axis_label = "Current - Not scaled"

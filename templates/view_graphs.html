@@ -109,7 +109,16 @@
                 window.location.replace(new_url)
             }
 
+            function hsModal(){
+                document.getElementById("hs_modal").classList.add("is-active")
+            }
+
+            function cancelHS(){
+                document.getElementById("hs_modal").classList.remove("is-active")
+            }
+
             function showHSRegions(){
+                document.getElementById("hs_modal").classList.remove("is-active")
                 //remove all previous data
                 new_url = window.location.href
                 new_url = new_url.replace(/\&start=[0-9]*/g, "")
@@ -196,6 +205,41 @@
                 new_url = new_url.replace(/\&merge=[0-9]*/g, "")
                 new_url = new_url.replace(/\&stdev_scale=[0-9]*\.[0-9]*/g, "")
                 new_url = new_url.replace(/\&stall_len=[0-9]*\.[0-9]*/g, "")
+                new_url = new_url.replace(/\&height=[0-9]*/g, "")
+                new_url = new_url.replace(/\&width=[0-9]*/g, "")
+                window.location.replace(new_url)
+            }
+
+            function updateDimensionModal(){
+                document.getElementById("dimension_modal").classList.add("is-active")
+            }
+
+            function cancelUpdateDimension(){
+                document.getElementById("dimension_modal").classList.remove("is-active")
+            }
+
+            function updateDimensions(){
+                document.getElementById("dimension_modal").classList.remove("is-active")
+                height = document.getElementById("height").value
+                width = document.getElementById("width").value
+                if (!(height && width)) {
+                    document.getElementById("dimension_error").innerHTML="Dimension values invalid. Make sure that all fields have been filled in."
+                    document.getElementById("dimension_error").style.display="block"
+                } else if ((parseInt(height) <= 0)||(parseInt(width) <= 0)){
+                    document.getElementById("dimension_error").innerHTML="Dimension values invalid. Both height and width must be > 0."
+                    document.getElementById("dimension_error").style.display="block"
+                } else {
+                    new_url = window.location.href
+                    new_url = new_url.replace(/\&height=[0-9]*/g, "")
+                    new_url = new_url.replace(/\&width=[0-9]*/g, "")
+                    window.location.replace(new_url.concat("&height=").concat(height).concat("&width=").concat(width))
+                }
+            }
+
+            function resetDimensions(){
+                new_url = window.location.href
+                new_url = new_url.replace(/\&height=[0-9]*/g, "")
+                new_url = new_url.replace(/\&width=[0-9]*/g, "")
                 window.location.replace(new_url)
             }
         </script>
@@ -248,7 +292,7 @@
                 <button class="delete" aria-label="close" onClick="cancelClearAll()"></button>
             </header>
             <section class="modal-card-body">
-                Are you sure you would like to clear the graph? This will remove all the current drawings, thresholds and segments and reset the graph to its original state.
+                Are you sure you would like to reset the graph? This will remove all the current drawings, thresholds and segments and reset the graph to its original state.
             </section>
             <footer class="modal-card-foot">
                 <button class="button is-success" onClick="clearGraphAll()">Yes</button>
@@ -266,7 +310,7 @@
             </header>
             <section class="modal-card-body">
                 <div class="content">
-                        <p>To view a graph, select the desired readID from the drop down menu and click the "View" button. To remove all annotations, click the "Clear Annotations" button. To delete the extracted data file, click the "Delete All Graphs" button.</p>
+                        <p>To view a graph, select the desired readID from the drop down menu and click the "View" button. To remove all annotations, click "Clear Annotations". To completely reset the graph, click "Reset". To delete the extracted data file, click "Delete All Graphs".</p>
                         <hr>
                         <h4>ANALYSIS</h4>
                         <p>On the left of the graph there are 2 options that can be used for further analysis of the graphs.</p> 
@@ -309,15 +353,49 @@
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
-                <p class="modal-card-title">Confirm threshold change</p>
+                <p class="modal-card-title">Confirm Threshold Change</p>
                 <button class="delete" aria-label="close" onClick=cancelUpdate()></button>
             </header>
             <section class="modal-card-body">
-                Are you sure you would like update the threshold? This will delete all annotations you have made and reset the graph.
+                Are you sure you would like to update the threshold? This will delete all annotations you have made and reset the graph.
             </section>
             <footer class="modal-card-foot">
                 <button class="button is-success" onClick="update()">Yes</button>
                 <button class="button" onClick="cancelUpdate()">Cancel</button>
+            </footer>
+        </div>
+	</div>
+
+    <div class="modal" id="hs_modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Confirm Show HS Regions</p>
+                <button class="delete" aria-label="close" onClick=cancelHS()></button>
+            </header>
+            <section class="modal-card-body">
+                Are you sure you would like view/change the HS regions? This will delete all annotations you have made and reset the graph.
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-success" onClick="showHSRegions()">Yes</button>
+                <button class="button" onClick="cancelHS()">Cancel</button>
+            </footer>
+        </div>
+	</div>
+
+    <div class="modal" id="dimension_modal">
+        <div class="modal-background"></div>
+        <div class="modal-card">
+            <header class="modal-card-head">
+                <p class="modal-card-title">Confirm Dimension Change</p>
+                <button class="delete" aria-label="close" onClick=cancelUpdateDimension()></button>
+            </header>
+            <section class="modal-card-body">
+                Are you sure you would like to change the graph dimensions? This will delete all annotations you have made and reset the graph.
+            </section>
+            <footer class="modal-card-foot">
+                <button class="button is-success" onClick="updateDimensions()">Yes</button>
+                <button class="button" onClick="cancelUpdateDimension()">Cancel</button>
             </footer>
         </div>
 	</div>
@@ -358,10 +436,14 @@
             <button class="button is-rounded is-warning" id="clear_button" onClick="modalClear()">Clear Annotations</button>
             <button class="button is-rounded" id="clear_all_button" onClick="modalClearAll()">Reset</button>
             <br><br>
-
+            <section>
+            {{graph.html|safe}}
+            </section>
+            <br><br>
+            <h1 class="has-text-link title is-5">ANALYSIS TOOLS</h1>
             <section class="columns">
-                <section class="column has-text-left">
-                    <strong class="has-text-link">Threshold</strong><br>
+                <section class="column is-one-fifth">
+                    <h1 class="has-text-link subtitle is-6">THRESHOLD</h1>
                     <div class="field">
                         <label class="label">Max</label>
                         <div class="control">
@@ -377,93 +459,118 @@
                     <button class="button is-info is-small" onClick=updateModal()>Set</button> <button class="button is-small" onClick=reset()>Reset</button> <br><br>
                     <p id="threshold_error" class="help has-text-danger" style="display: none"></p>
                     <small>{{graph.omitted}} point/s have been omitted due to the threshold</small><br><br>
-                    <strong class="has-text-link">View Homopolymer/Stall Regions</strong><br>
-                        <div class="field">
-                            <strong>Section</strong>
-                            <div class="control">
-                                <label class="radio">
-                                {% if graph.end %}
-                                <input type="radio" name="section" onClick="hideSectionParams()" value="All" id="All">
-                                All
-                                </label>
-                                <label class="radio">
-                                <input type="radio" name="section" onClick="showSectionParams()" value="Selected" id="Selected" checked>
-                                Selected
-                                </label>
+                </section>
+                <section class="column is-three-fifths">
+                    <h1 class="has-text-link subtitle is-6">VIEW HOMOPOLYMER/STALL REGIONS</h1>
+                    <section class="columns">
+                        <section class="column">
+                            <div class="field">
+                                <strong>Section</strong>
+                                <div class="control">
+                                    <label class="radio">
+                                    {% if graph.end %}
+                                    <input type="radio" name="section" onClick="hideSectionParams()" value="All" id="All">
+                                    All
+                                    </label>
+                                    <label class="radio">
+                                    <input type="radio" name="section" onClick="showSectionParams()" value="Selected" id="Selected" checked>
+                                    Selected
+                                    </label>
+                                </div>
                             </div>
-                        </div>
-                        <div class="field" id="section_params" style="display: block">
-                                {% else %}
-                                <input type="radio" name="section" onClick="hideSectionParams()" value="All" id="All" checked>
-                                All
-                                </label>
-                                <label class="radio">
-                                <input type="radio" name="section" onClick="showSectionParams()" value="Selected" id="Selected">
-                                Selected
-                                </label>
+                            <div class="field" id="section_params" style="display: block">
+                                    {% else %}
+                                    <input type="radio" name="section" onClick="hideSectionParams()" value="All" id="All" checked>
+                                    All
+                                    </label>
+                                    <label class="radio">
+                                    <input type="radio" name="section" onClick="showSectionParams()" value="Selected" id="Selected">
+                                    Selected
+                                    </label>
+                                </div>
                             </div>
-                        </div>
-                        <div class="field" id="section_params" style="display: none">
-                                {% endif %}
-                                
-                            <label class="label">Start</label>
-                            <div class="control">
-                                <input id="start" type="number" min=0 step=1 value={{graph.start}}>
+                            <div class="field" id="section_params" style="display: none">
+                                    {% endif %}
+                                    
+                                <label class="label">Start</label>
+                                <div class="control">
+                                    <input id="start" type="number" min=0 step=1 value={{graph.start}}>
+                                </div>
+                                <label class="label">End</label>
+                                <div class="control">
+                                    <input id="end" type="number" min=0 step=1 value={{graph.end}}>
+                                </div>
+                                <p id="section_error" class="help has-text-danger" style="display: none"></p>
                             </div>
-                            <label class="label">End</label>
-                            <div class="control">
-                                <input id="end" type="number" min=0 step=1 value={{graph.end}}>
+                        </section>
+                        <section class="column">
+                            <div class="field">
+                                <label class="label">Allowable Error</label>
+                                <div class="control">
+                                    <input id="allow_error" type="number" min=0 step=1 value={{graph.error}}>
+                                </div>
                             </div>
-                            <p id="section_error" class="help has-text-danger" style="display: none"></p>
-                        </div>
-                        <div class="field">
-                            <label class="label">Allowable Error</label>
-                            <div class="control">
-                                <input id="allow_error" type="number" min=0 step=1 value={{graph.error}}>
+                            <div class="field">
+                                <label class="label">Error Window Size</label>
+                                <div class="control">
+                                    <input id="window" type="number" min=0 step=1 value={{graph.error_win}}>
+                                </div>
                             </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">Error Window Size</label>
-                            <div class="control">
-                                <input id="window" type="number" min=0 step=1 value={{graph.error_win}}>
+                            <div class="field">
+                                <label class="label">Min Window Size</label>
+                                <div class="control">
+                                    <input id="min_window" type="number" min=0 step=1 value={{graph.min_win}}>
+                                </div>
                             </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">Min Window Size</label>
-                            <div class="control">
-                                <input id="min_window" type="number" min=0 step=1 value={{graph.min_win}}>
+                        </section>
+                        <section class="column">
+                            <div class="field">
+                                <label class="label">Max Merge Distance</label>
+                                <div class="control">
+                                    <input id="merge" type="number" min=0 step=1 value={{graph.max_merge}}>
+                                </div>
                             </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">Max Merge Distance</label>
-                            <div class="control">
-                                <input id="merge" type="number" min=0 step=1 value={{graph.max_merge}}>
+                            <div class="field">
+                                <label class="label">STDev Scale Factor</label>
+                                <div class="control">
+                                    <input id="stdev_scale" type="number" min=0 step=0.01 value={{graph.std_scale}}>
+                                </div>
                             </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">STDev Scale Factor</label>
-                            <div class="control">
-                                <input id="stdev_scale" type="number" min=0 step=0.01 value={{graph.std_scale}}>
+                            <div class="field">
+                                <label class="label">Stall Length</label>
+                                <div class="control">
+                                    <input id="stall_len" type="number" min=0 step=0.01 value={{graph.stall_len}}>
+                                </div>
                             </div>
-                        </div>
-                        <div class="field">
-                            <label class="label">Stall Length</label>
-                            <div class="control">
-                                <input id="stall_len" type="number" min=0 step=0.01 value={{graph.stall_len}}>
-                            </div>
-                        </div>
-                        <!--help="Minimum percentage of minimum window segment for initial stall segment")-->
-                        <div class="field">
-                            <div class="control">
-                                <button class="button is-small is-info" onClick=showHSRegions()>View</button>
-                                <button class="button is-small is-success" onClick=setDefaults()>Default</button>
-                                <button class="button is-small" onClick=resetSegmenter()>Reset</button>
-                            </div>
-                        </div>
-                        <p id="segmenter_error" class="help has-text-danger" style="display: none"></p>
+                            <!--help="Minimum percentage of minimum window segment for initial stall segment")-->
+                        </section>
                     </section>
-                <section class="column">
-                    {{graph.html|safe}}
+                    <div class="field">
+                        <div class="control">
+                            <button class="button is-small is-info" onClick=hsModal()>View</button>
+                            <button class="button is-small is-success" onClick=setDefaults()>Default</button>
+                            <button class="button is-small" onClick=resetSegmenter()>Reset</button>
+                        </div>
+                    </div>
+                    <p id="segmenter_error" class="help has-text-danger" style="display: none"></p>
+                </section>
+                <div class="is-divider-vertical"></div>
+                <section class="column is-one-fifth">
+                    <h1 class="has-text-link subtitle is-6">PLOT DIMENSIONS</h1>
+                    <div class="field">
+                        <label class="label">Width</label>
+                        <div class="control">
+                            <input id="width" type="number" min="0" value={{graph.width}}><br>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label class="label">Height</label>
+                        <div class="control">
+                            <input id="height" type="number" min="0" value={{graph.height}}>
+                        </div>
+                    </div>
+                    <button class="button is-info is-small" onClick=updateDimensionModal()>Set</button> <button class="button is-small" onClick=resetDimensions()>Reset</button> <br><br>
+                    <p id="threshold_error" class="help has-text-danger" style="display: none"></p>
                 </section>
             </section>
         </section>
