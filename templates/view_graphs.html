@@ -3,20 +3,29 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>SquiggleKit Web</title>        
+        <title>SquiggleKit Web</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.1/css/bulma.css">
+        <!--link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.1/css/bootstrap-select.css" />
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.1/js/bootstrap-select.js"></script-->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.1/css/selectize.min.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js"></script>
         <style>
             .bk {
                 position: center;
             }
         </style>
         <script>
+
             function loadGraph(){
                 document.getElementById("view_button").classList.add("is-loading")
                 var read_id = document.getElementById("read").value
                 window.location.replace("/view_graphs?f5_path={{f5_path}}&type={{type}}&read_id=".concat(read_id))
             }
-        
+
             function modal(){
                 document.getElementById("delete_modal").classList.add("is-active")
             }
@@ -75,7 +84,7 @@
             function closeHelp(){
                 document.getElementById("help_modal").classList.remove("is-active")
             }
-        
+
             function updateModal(){
                 document.getElementById("update_modal").classList.add("is-active")
             }
@@ -101,7 +110,7 @@
                     window.location.replace(new_url.concat("&max=").concat(max).concat("&min=").concat(min))
                 }
             }
-    
+
             function reset(){
                 new_url = window.location.href
                 new_url = new_url.replace(/\&max=[0-9]*/g, "")
@@ -194,7 +203,7 @@
                 document.getElementById("stdev_scale").value = 0.75
                 document.getElementById("stall_len").value = 0.25
             }
-            
+
             function resetSegmenter(){
                 new_url = window.location.href
                 new_url = new_url.replace(/\&start=[0-9]*/g, "")
@@ -313,7 +322,7 @@
                         <p>To view a graph, select the desired readID from the drop down menu and click the "View" button. To remove all annotations, click "Clear Annotations". To completely reset the graph, click "Reset". To delete the extracted data file, click "Delete All Graphs".</p>
                         <hr>
                         <h4>ANALYSIS</h4>
-                        <p>On the left of the graph there are 2 options that can be used for further analysis of the graphs.</p> 
+                        <p>On the left of the graph there are 2 options that can be used for further analysis of the graphs.</p>
                         <h6>THRESHOLD</h6>
                         <p>Set a lower and upper threshold where points beyond the range will be omitted from the graph. Both min and max values must be >0, and integer values. The "Reset" button removes any changes to the threshold.</p>
                         <h6>VIEW HOMOPOLYMER/STALL REGIONS</h6>
@@ -330,15 +339,15 @@
                         <h6>BOX EDIT TOOL</h6>
                         <p>Add, move and delete boxes for highlighting specific sections. Upper limit is 5 boxes at a time, after which the oldest box will be replaced by the newest. Hold SHIFT while selecting to select more than one at a time.<br>
                             <b>Add:</b> Hold SHIFT and click and drag with your mouse.<br>
-                            <b>Move:</b> Click on the desired box/es and drag.<br>               
+                            <b>Move:</b> Click on the desired box/es and drag.<br>
                             <b>Delete:</b> Click on the desired box/es and press BACKSPACE/DELETE (for Mac users).</p>
                         <h6>FREEHAND DRAW TOOL</h6>
                         <p>Write and draw on the plot.<br>
                             <b>Add:</b> Simply click and drag. The line will be counted as one until the click is released.<br>
-                            <b>Move:</b> Click on the desired line/s and drag.<br>               
+                            <b>Move:</b> Click on the desired line/s and drag.<br>
                             <b>Delete:</b> Click on the desired line/s and press BACKSPACE/DELETE (for Mac users).</p>
                         <h6>SAVE</h6>
-                        <p>Click save to download a png of the graph exactly as is. This includes any zoom selected or drawings/annotations that have been added.</p> 
+                        <p>Click save to download a png of the graph exactly as is. This includes any zoom selected or drawings/annotations that have been added.</p>
                         <h6>RESET</h6>
                         <p>Reset will only realign the graph with the original setting. It does not remove any drawings/annotations added.</p>
                     </p>
@@ -411,8 +420,11 @@
             <div class="field has-addons has-addons-centered">
                 <div class="control">
                     <!--input type="number" class="input is-rounded has-text-centered" id="num" value="{{graph.num}}" step="1" min=0 max={{count}}-->
-                    <div class="select is-rounded">
-                        <select id="read">
+                    <!--div class="select is-rounded"-->
+                        <select id="read" class="selectpicker" style="width:300px">
+                            <option value=""></option>
+                        <!--select id="read" data-live-search="true" data-live-search-style="startsWith" class="selectpicker">
+                        REALLY SLOW -->
                             {% for read in reads %}
                                 {% if read == graph.id %}
                                     <option value={{read}} selected>{{read}}</option>
@@ -421,13 +433,18 @@
                                 {% endif %}
                             {% endfor %}
                         </select>
-                    </div>
+                    <!--/div-->
                 </div>
+                <script>
+                    $(function() {
+                      $('select').selectize();
+                    });
+                </script>
                 <div class="control">
                     <button class="button is-info is-rounded" id="view_button" onClick="loadGraph()">View</button>
-                </div>   
+                </div>
             </div>
-            <p class="has-text-danger" id="error"></p> 
+            <p class="has-text-danger" id="error"></p>
             <input class="button is-rounded is-danger" type="submit" value="Delete All Graphs" onClick="modal()">
             <input class="button is-rounded is-success" type="submit" value="Help" onClick="modalHelp()">
         </section>
@@ -491,7 +508,7 @@
                             </div>
                             <div class="field" id="section_params" style="display: none">
                                     {% endif %}
-                                    
+
                                 <label class="label">Start</label>
                                 <div class="control">
                                     <input id="start" type="number" min=0 step=1 value={{graph.start}}>

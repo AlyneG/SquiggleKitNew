@@ -111,7 +111,7 @@ def main():
     index.add_argument("-m", "--multi_f5",
                         help="path to multi-fast5 files")
     parser.add_argument("-c", "--f5_format", default="multi", choices=["multi", "single"],
-                        help="fast5 file format output")
+                        help="output fast5 file format")
     parser.add_argument("--threshold", default=4000, type=int,
                         help="threshold number for amount of reads in a single multifast5 output file")
     parser.add_argument("-o", "--output", required=True,
@@ -175,6 +175,11 @@ def main():
         sys.stderr.write("\nNo output detected.\nPlease indicate a path to place the extracted fast5 files.\n\n\n")
         parser.print_help(sys.stderr)
         sys.exit(1)
+    else:
+        if not os.path.isdir(args.output):
+            os.mkdir(args.output)
+            if args.verbose:
+                sys.stderr.write("Output folder '{}' created\n".format(args.output))
     # --------------------------------------------------------------------------
 
     if args.verbose:
@@ -318,7 +323,7 @@ def main():
             if count != 0:
                 s2m(tmp_path, save_path, outfile, None)
             shutil.rmtree(tmp_path)
-                        
+
     # For each .tar file, write a file with the tarball name as filename.tar.txt
     # and contains a list of files to extract - input for batch_tater.py
     if args.pppp:
@@ -705,7 +710,7 @@ def s2m(f5_path, save_path, output_file, target_compression):
     output_file = output_file + ".fast5"
     if target_compression == "gzip":
         output_file = output_file + ".gz"
-        
+
     for dirpath, dirnames, files in os.walk(f5_path):
         for fast5 in files:
             if fast5.endswith('.fast5'):
@@ -823,7 +828,7 @@ def extract_file(args, path, filename):
     save_path = args.output
     if args.f5_format == "multi":
         save_path = os.path.abspath("fast5_fetcher_temp")
-    
+
     if path.endswith('.tar'):
         if OSystem in ["Linux", "Windows"]:
             cmd = "tar -xf {} --transform='s/.*\///' -C {} {}".format(
