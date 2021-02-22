@@ -5,11 +5,6 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>SquiggleKit Web</title>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.1/css/bulma.css">
-        <!--link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.1/css/bootstrap-select.css" />
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.12.1/js/bootstrap-select.js"></script-->
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.1/css/selectize.min.css">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/selectize.js/0.12.6/js/standalone/selectize.min.js"></script>
@@ -254,12 +249,8 @@
         </script>
     </head>
     <body>
-        <section class="section has-text-centered">
-            <a href="/"><h1 class="title has-text-link">SquiggleKit Web</h1></a>
-            <h2 class="subtitle">A web application to help with the display and analysis of Oxford Nanopore raw signal data.</h2>
-        </section>
 
-	<div class="modal" id="delete_modal">
+    <div class="modal" id="delete_modal">
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
@@ -274,9 +265,9 @@
                 <button class="button" onClick="cancel()">Cancel</button>
             </footer>
         </div>
-	</div>
+    </div>
 
-	<div class="modal" id="clear_modal">
+    <div class="modal" id="clear_modal">
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
@@ -291,9 +282,9 @@
                 <button class="button" onClick="cancelClear()">Cancel</button>
             </footer>
         </div>
-	</div>
+    </div>
 
-	<div class="modal" id="clear_all_modal">
+    <div class="modal" id="clear_all_modal">
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
@@ -308,9 +299,9 @@
                 <button class="button" onClick="cancelClearAll()">Cancel</button>
             </footer>
         </div>
-	</div>
+    </div>
 
-	<div class="modal" id="help_modal">
+    <div class="modal" id="help_modal">
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
@@ -356,7 +347,7 @@
             <footer class="modal-card-foot">
             </footer>
         </div>
-	</div>
+    </div>
 
     <div class="modal" id="update_modal">
         <div class="modal-background"></div>
@@ -373,7 +364,7 @@
                 <button class="button" onClick="cancelUpdate()">Cancel</button>
             </footer>
         </div>
-	</div>
+    </div>
 
     <div class="modal" id="hs_modal">
         <div class="modal-background"></div>
@@ -390,7 +381,7 @@
                 <button class="button" onClick="cancelHS()">Cancel</button>
             </footer>
         </div>
-	</div>
+    </div>
 
     <div class="modal" id="dimension_modal">
         <div class="modal-background"></div>
@@ -407,8 +398,12 @@
                 <button class="button" onClick="cancelUpdateDimension()">Cancel</button>
             </footer>
         </div>
-	</div>
+    </div>
 
+        <section class="section has-text-centered">
+            <a href="/"><h1 class="title has-text-link">SquiggleKit Web</h1></a>
+            <h2 class="subtitle">A web application to help with the display and analysis of Oxford Nanopore raw signal data.</h2>
+        </section>
         <section class="section has-text-centered">
             {% if type == "raw" %}
                 <h1 class="title is-5">Data of {{count}} reads were successfully extracted from</h1>
@@ -417,23 +412,18 @@
             {% endif %}
             <h1 class="title is-5 has-text-info">{{f5_path}}</h1>
             <p>Select a readID</p><br>
-            <div class="field has-addons has-addons-centered">
+            <div class="field is-grouped is-grouped-centered">
                 <div class="control">
-                    <!--input type="number" class="input is-rounded has-text-centered" id="num" value="{{graph.num}}" step="1" min=0 max={{count}}-->
-                    <!--div class="select is-rounded"-->
-                        <select id="read" class="selectpicker" style="width:300px">
-                            <option value=""></option>
-                        <!--select id="read" data-live-search="true" data-live-search-style="startsWith" class="selectpicker">
-                        REALLY SLOW -->
-                            {% for read in reads %}
-                                {% if read == graph.id %}
-                                    <option value={{read}} selected>{{read}}</option>
-                                {% else %}
-                                    <option value={{read}}>{{read}}</option>
-                                {% endif %}
-                            {% endfor %}
-                        </select>
-                    <!--/div-->
+                      <select id="read" class="selectpicker" style="width:300px">
+                          <option value=""></option>
+                          {% for read in reads %}
+                              {% if read == graph.id %}
+                                  <option value={{read}} selected>{{read}}</option>
+                              {% else %}
+                                  <option value={{read}}>{{read}}</option>
+                              {% endif %}
+                          {% endfor %}
+                      </select>
                 </div>
                 <script>
                     $(function() {
@@ -441,7 +431,7 @@
                     });
                 </script>
                 <div class="control">
-                    <button class="button is-info is-rounded" id="view_button" onClick="loadGraph()">View</button>
+                    <button class="button is-info" id="view_button" onClick="loadGraph()">View</button>
                 </div>
             </div>
             <p class="has-text-danger" id="error"></p>
