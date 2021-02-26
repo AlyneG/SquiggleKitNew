@@ -415,29 +415,6 @@ def get_segs(sig, error, error_win, min_win, max_merge, std_scale, stall_len):
         return False
 
 def bkapp(doc):
-    '''
-    df = sea_surface_temperature.copy()
-    source = ColumnDataSource(data=df)
-
-    plot = figure(x_axis_type='datetime', y_range=(0, 25), y_axis_label='Temperature (Celsius)',
-                  title="Sea Surface Temperature at 43.18, -70.43")
-    plot.line('time', 'temperature', source=source)
-
-    def callback(attr, old, new):
-        if new == 0:
-            data = df
-        else:
-            data = df.rolling(f"{new}D").mean()
-        source.data = ColumnDataSource.from_df(data)
-
-    slider = Slider(start=0, end=30, value=0, step=1, title="Smoothing by N Days")
-    slider.on_change('value', callback)
-
-    doc.add_root(column(slider, plot))
-
-    doc.theme = Theme(filename="theme.yaml")
-    '''
-    print("bkapp is being run!")
     global signal
     ut = 0
     lt = 0
@@ -453,6 +430,29 @@ def bkapp(doc):
         p = figure()
 
         p.line('position','signal', source=source)
+
+        p.add_tools(HoverTool(
+            tooltips=[
+                ('signal', '@signal'),
+                ('position', '@position'),
+            ],
+            formatters={
+                'signal'    : 'printf',
+                'position'    : 'printf'
+            },
+            mode='vline'
+        ))
+
+        renderer = p.multi_line([[1,9]], [[5,5]], line_width=4, alpha=0.5, color='green')
+        draw_tool = FreehandDrawTool(renderers=[renderer])
+        p.add_tools(draw_tool)
+
+        src = ColumnDataSource({
+            'x':[1,1,1], 'y':[1,1,1], 'width':[1,1,1], 'height':[1,1,1]
+        })
+        box_renderer = p.rect('x', 'y', 'width', 'height', fill_alpha=0.4, fill_color='orange', line_color='orange', source=src)
+        box_draw_tool = BoxEditTool(renderers=[box_renderer], empty_value=1, num_objects = 5)
+        p.add_tools(box_draw_tool)
 
         def upper_thresh_callback(attr, old, new):
             ut = new
@@ -495,7 +495,6 @@ def bkapp(doc):
                     }
         source.change.emit();
         """)
-
 
         ut_slider.js_on_change('value', callback)
         lt_slider.js_on_change('value', callback)
