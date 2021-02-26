@@ -444,13 +444,12 @@
             <button class="button is-rounded" id="clear_all_button" onClick="modalClearAll()">Reset</button>
             <br><br>
             <section>
-            <!--{{graph.html|safe}}-->
-            {{ script|safe }}
+            {{graph.html|safe}}
             </section>
             <br><br>
             <h1 class="has-text-link title is-5">ANALYSIS TOOLS</h1>
             <section class="columns">
-                <!--section class="column is-one-fifth">
+                <section class="column is-one-fifth">
                     <h1 class="has-text-link subtitle is-6">THRESHOLD</h1>
                     <div class="field">
                         <label class="label">Max</label>
@@ -467,7 +466,7 @@
                     <button class="button is-info is-small" onClick=updateModal()>Set</button> <button class="button is-small" onClick=reset()>Reset</button> <br><br>
                     <p id="threshold_error" class="help has-text-danger" style="display: none"></p>
                     <small>{{graph.omitted}} point/s have been omitted due to the threshold</small><br><br>
-                </section-->
+                </section>
                 <section class="column is-three-fifths">
                     <h1 class="has-text-link subtitle is-6">VIEW HOMOPOLYMER/STALL REGIONS</h1>
                     <section class="columns">

@@ -5,30 +5,21 @@ import time
 import h5py
 import traceback
 import numpy as np
-from bokeh.plotting import figure
+from bokeh.client import pull_session
+from bokeh.embed import server_session
+from bokeh.plotting import figure, curdoc
 from bokeh.resources import CDN
 from bokeh.embed import file_html
-from bokeh.models import Title, HoverTool, ColumnDataSource, FreehandDrawTool, BoxEditTool, BoxAnnotation, CustomJS
+from bokeh.models import Title, HoverTool, ColumnDataSource, FreehandDrawTool, BoxEditTool, BoxAnnotation
 import json
-
-from tornado.ioloop import IOLoop
-from threading import Thread
-from bokeh.embed import server_document
-from bokeh.layouts import column
-from bokeh.models import ColumnDataSource, Slider
-from bokeh.sampledata.sea_surface_temperature import sea_surface_temperature
-from bokeh.server.server import Server
-from bokeh.themes import Theme
-
 
 app = Flask(__name__)
 
-signal = None
+#@app.route("/test",methods = ["GET"])
+#def bkapp_page():
+#    with pull_session(url="http://local")
 
-@app.route('/test', methods=['GET'])
-def bkapp_page():
-    script = server_document('http://localhost:5006/bkapp')
-    return render_template("embed.html", script=script, template="Flask")
+#    return render_template("home.html")
 
 @app.route("/",methods = ["POST", "GET"])
 def home():
@@ -101,8 +92,6 @@ def view():
     height = request.args.get('height')
     width = request.args.get('width')
 
-    script = []
-
     if read is None:
         read = ""
 
@@ -169,11 +158,6 @@ def view():
                     segs = get_segs(section, error, error_win, min_win, max_merge, std_scale, stall_len)
     graph = dict()
     if sig is not None:
-        global signal
-        signal = sig
-        print(signal)
-        Thread(target=bk_worker).start()
-        #change_bk()
         html_graph = view(sig, segs, type, read, fast5, height, width)
         graph['html'] = Markup(html_graph)
         graph['id'] = str(read)
@@ -192,9 +176,7 @@ def view():
             graph['stall_len'] = stall_len
         graph['height'] = height
         graph['width'] = width
-
-        script = server_document('http://localhost:5006/bkapp')
-    return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, script=script, count=len(reads), reads=reads)
+    return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, count=len(reads), reads=reads)
 
 @app.route("/delete")
 def delete():
@@ -414,108 +396,5 @@ def get_segs(sig, error, error_win, min_win, max_merge, std_scale, stall_len):
     else:
         return False
 
-def bkapp(doc):
-    '''
-    df = sea_surface_temperature.copy()
-    source = ColumnDataSource(data=df)
-
-    plot = figure(x_axis_type='datetime', y_range=(0, 25), y_axis_label='Temperature (Celsius)',
-                  title="Sea Surface Temperature at 43.18, -70.43")
-    plot.line('time', 'temperature', source=source)
-
-    def callback(attr, old, new):
-        if new == 0:
-            data = df
-        else:
-            data = df.rolling(f"{new}D").mean()
-        source.data = ColumnDataSource.from_df(data)
-
-    slider = Slider(start=0, end=30, value=0, step=1, title="Smoothing by N Days")
-    slider.on_change('value', callback)
-
-    doc.add_root(column(slider, plot))
-
-    doc.theme = Theme(filename="theme.yaml")
-    '''
-    print("bkapp is being run!")
-    global signal
-    ut = 0
-    lt = 0
-    if signal is not None:
-        print(signal)
-        ut = max(signal)
-        lt = min(signal)
-        source = ColumnDataSource(data={
-            'signal'    : signal,
-            'position'  : list(range(0,len(signal)))
-            })
-
-        p = figure()
-
-        p.line('position','signal', source=source)
-
-        def upper_thresh_callback(attr, old, new):
-            ut = new
-            print(ut, lt)
-            print(cb_obj.name)
-            new_signal = scale_outliers(signal, ut, lt)
-            source.data = {
-                        'signal'    : new_signal,
-                        'position'  : (list(range(0,len(new_signal))))
-                        }
-
-        def lower_thresh_callback(attr, old, new):
-            lt = new
-            print(ut, lt)
-            print(cb_obj.name)
-            new_signal = scale_outliers(signal, ut, lt)
-            source.data = {
-                        'signal'    : new_signal,
-                        'position'  : (list(range(0,len(new_signal))))
-                        }
-        ut_slider = Slider(start=lt, end=max(signal), value=max(signal), name='upper_thresh', step=1, title="UPPER THRESHOLD")
-        lt_slider = Slider(start=min(signal), end=ut, value=min(signal), name='lower_thresh', step=1, title="LOWER THRESHOLD")
-
-        callback = CustomJS(args=dict(source=source, ut_slider=ut_slider, lt_slider=lt_slider, signal=signal), code="""
-        var name = cb_obj.name
-
-        if(name == "upper_thresh"){
-            var upper = cb_obj.value;
-            var lower = lt_slider.value;
-        } else {
-            var upper = ut_slider.value;
-            var lower = cb_obj.value;
-        };
-        var new_signal = signal.filter(function(value, index, arr){
-            return value >= lower && value <= upper;
-        });
-        source.data = {
-                    'signal'    : new_signal,
-                    'position'  : [...Array(new_signal.length).keys()]
-                    }
-        source.change.emit();
-        """)
-
-
-        ut_slider.js_on_change('value', callback)
-        lt_slider.js_on_change('value', callback)
-
-        doc.add_root(column(ut_slider, lt_slider, p))
-        doc.theme = Theme(filename="theme.yaml")
-
-def bk_worker():
-    # Can't pass num_procs > 1 in this configuration. If you need to run multiple
-    # processes, see e.g. flask_gunicorn_embed.py
-    print("I, the bk_worker, am being run")
-    server = Server({'/bkapp': bkapp}, io_loop=IOLoop(), allow_websocket_origin=["127.0.0.1:8080"])
-    server.start()
-    server.io_loop.start()
-
-
 if __name__ == "__main__":
-    print('Opening single process Flask app with embedded Bokeh application on http://localhost:8000/')
-    print()
-    print('Multiple connections may block the Bokeh app in this configuration!')
-    print('See "flask_gunicorn_embed.py" for one way to run multi-process')
-
     app.run(port="8080", debug=True)
