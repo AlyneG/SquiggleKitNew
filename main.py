@@ -8,13 +8,13 @@ import numpy as np
 from bokeh.plotting import figure
 from bokeh.resources import CDN
 from bokeh.embed import file_html
-from bokeh.models import Title, HoverTool, ColumnDataSource, FreehandDrawTool, BoxEditTool, BoxAnnotation, CustomJS
+from bokeh.models import Title, HoverTool, ColumnDataSource, FreehandDrawTool, BoxEditTool, BoxAnnotation, CustomJS, Rect
 import json
 
 from tornado.ioloop import IOLoop
 from threading import Thread
 from bokeh.embed import server_document
-from bokeh.layouts import column
+from bokeh.layouts import column, row
 from bokeh.models import ColumnDataSource, Slider
 from bokeh.sampledata.sea_surface_temperature import sea_surface_temperature
 from bokeh.server.server import Server
@@ -24,6 +24,12 @@ from bokeh.themes import Theme
 app = Flask(__name__)
 
 signal = None
+err = 5
+err_win = 50
+min_win = 150
+max_merge = 50
+stdev_scale = 0.75
+stall_len = 0.25
 
 @app.route('/test', methods=['GET'])
 def bkapp_page():
@@ -372,6 +378,8 @@ def get_segs(sig, error, error_win, min_win, max_merge, std_scale, stall_len):
     start = 0     # start pos
     end = 0       # end pos
     segs = []     # segments [(start, stop)]
+    left = []
+    right = []
     for i in range(len(sig)):
         a = sig[i]
         if a < top and a > bot: # If datapoint is within range
@@ -397,7 +405,9 @@ def get_segs(sig, error, error_win, min_win, max_merge, std_scale, stall_len):
                 if segs and start - segs[-1][1] < seg_dist: # if segs very close, merge them
                     segs[-1][1] = end
                 else:
-                    segs.append([start, end]) # save segment
+                    segs.append([start,end])
+                    left.append(start)
+                    right.append(end) # save segment
                 c = 0
                 err = 0
                 prev_err = 0
@@ -410,7 +420,7 @@ def get_segs(sig, error, error_win, min_win, max_merge, std_scale, stall_len):
                 continue
 
     if segs:
-        return segs
+        return left, right
     else:
         return False
 
@@ -454,27 +464,8 @@ def bkapp(doc):
         box_draw_tool = BoxEditTool(renderers=[box_renderer], empty_value=1, num_objects = 5)
         p.add_tools(box_draw_tool)
 
-        def upper_thresh_callback(attr, old, new):
-            ut = new
-            print(ut, lt)
-            print(cb_obj.name)
-            new_signal = scale_outliers(signal, ut, lt)
-            source.data = {
-                        'signal'    : new_signal,
-                        'position'  : (list(range(0,len(new_signal))))
-                        }
-
-        def lower_thresh_callback(attr, old, new):
-            lt = new
-            print(ut, lt)
-            print(cb_obj.name)
-            new_signal = scale_outliers(signal, ut, lt)
-            source.data = {
-                        'signal'    : new_signal,
-                        'position'  : (list(range(0,len(new_signal))))
-                        }
-        ut_slider = Slider(start=lt, end=max(signal), value=max(signal), name='upper_thresh', step=1, title="UPPER THRESHOLD")
-        lt_slider = Slider(start=min(signal), end=ut, value=min(signal), name='lower_thresh', step=1, title="LOWER THRESHOLD")
+        ut_slider = Slider(start=lt, end=max(signal), value=max(signal), name='upper_thresh', step=1, title="Upper Threshold")
+        lt_slider = Slider(start=min(signal), end=ut, value=min(signal), name='lower_thresh', step=1, title="Lower Threshold")
 
         callback = CustomJS(args=dict(source=source, ut_slider=ut_slider, lt_slider=lt_slider, signal=signal), code="""
         var name = cb_obj.name
@@ -499,7 +490,79 @@ def bkapp(doc):
         ut_slider.js_on_change('value', callback)
         lt_slider.js_on_change('value', callback)
 
-        doc.add_root(column(ut_slider, lt_slider, p))
+        err_slider = Slider(start=0, end=20, value=5, name='error', step=1, title="Allowable Error")
+        err_win_slider = Slider(start=0, end=100, value=50, name='err_win', step=1, title="Error Window Size")
+        min_win_slider = Slider(start=0, end=500, value=150, name='min_win', step=1, title="Minimum Window Size")
+        max_merge_slider = Slider(start=0, end=100, value=50, name='max_merge', step=1, title="Max Merge Distance")
+        stdev_scale_slider = Slider(start=0, end=5, value=0.75, name='stdev_scale', step=0.01, title="Standard Deviation Scale Factor")
+        stall_len_slider = Slider(start=0, end=5, value=0.25, name='stall_len', step=0.01, title="Stall Length")
+
+        #segment_callback = CustomJS(args=dict(err_slider=err_slider, err_win_slider=err_win_slider, min_win_slider=min_win_slider, maxe_merge_slider=max_merge_slider, stdev_scale=stdev_scale, stall_len=stall_len, signal=signal), code="""
+        #console.log(cb_obj.value)
+        #""")
+
+        segments = ColumnDataSource(data={
+            'top'     : [1,1],
+            'bottom'  : [1,1],
+            'left'    : [1,1],
+            'right'   : [1,1]
+            })
+
+        p.quad(top='top',bottom='bottom',left='left',right='right',source=segments,fill_alpha=0.5,fill_color='pink')
+
+        def err_callback(atrr, old, new):
+            global err
+            err = new
+            update_segs()
+
+        def err_win_callback(atrr, old, new):
+            global err_win
+            err_win = new
+            update_segs()
+
+        def min_win_callback(atrr, old, new):
+            global min_win
+            min_win = new
+            update_segs()
+
+        def max_merge_callback(atrr, old, new):
+            global max_merge
+            max_merge = new
+            update_segs()
+
+        def stdev_scale_callback(atrr, old, new):
+            global stdev_scale
+            stdev_scale = new
+            update_segs()
+
+        def stall_len_callback(atrr, old, new):
+            global stall_len
+            stall_len = new
+            update_segs()
+
+        def update_segs():
+            global err
+            global err_win
+            global min_win
+            global max_merge
+            global stdev_scale
+            global stall_len
+            left, right = get_segs(signal, err, err_win, min_win, max_merge, stdev_scale, stall_len)
+            segments.data = {
+                        'top'     :  np.full(len(left),700),
+                        'bottom'  :  np.full(len(left),0),
+                        'left'    :  left,
+                        'right'   :  right
+                        }
+
+        err_slider.on_change('value', err_callback)
+        err_win_slider.on_change('value', err_win_callback)
+        min_win_slider.on_change('value', min_win_callback)
+        max_merge_slider.on_change('value', max_merge_callback)
+        stdev_scale_slider.on_change('value', stdev_scale_callback)
+        stall_len_slider.on_change('value', stall_len_callback)
+
+        doc.add_root(row(column(ut_slider, lt_slider, err_slider, err_win_slider, min_win_slider, max_merge_slider, stdev_scale_slider, stall_len_slider), p))
         doc.theme = Theme(filename="theme.yaml")
 
 def bk_worker():
