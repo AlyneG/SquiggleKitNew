@@ -8,7 +8,8 @@ import numpy as np
 from bokeh.plotting import figure
 from bokeh.resources import CDN
 from bokeh.embed import file_html
-from bokeh.models import Title, HoverTool, ColumnDataSource, FreehandDrawTool, BoxEditTool, BoxAnnotation, CustomJS, Rect
+from bokeh.models import Title, HoverTool, ColumnDataSource, FreehandDrawTool, BoxEditTool, BoxAnnotation, CustomJS, Rect, Spacer
+from bokeh.models.widgets.buttons import AbstractButton, Toggle
 import json
 
 from tornado.ioloop import IOLoop
@@ -16,14 +17,15 @@ from threading import Thread
 from bokeh.embed import server_document
 from bokeh.layouts import column, row
 from bokeh.models import ColumnDataSource, Slider
-from bokeh.sampledata.sea_surface_temperature import sea_surface_temperature
 from bokeh.server.server import Server
 from bokeh.themes import Theme
 
 
 app = Flask(__name__)
 
-signal = None
+signal = []
+ut = None
+lt = None
 err = 5
 err_win = 50
 min_win = 150
@@ -94,59 +96,16 @@ def view():
     f5_path = request.args['f5_path']
     type = request.args['type']
     read = request.args.get('read_id')
-    max = request.args.get('max')
-    min = request.args.get('min')
-    start = request.args.get('start')
-    end = request.args.get('end')
-    error = request.args.get('error')
-    error_win = request.args.get('error_win')
-    min_win = request.args.get('min_win')
-    max_merge = request.args.get('max_merge')
-    std_scale = request.args.get('stdev_scale')
-    stall_len = request.args.get('stall_len')
-    height = request.args.get('height')
-    width = request.args.get('width')
+    id = ''
 
     script = []
 
     if read is None:
         read = ""
 
-    scale = False
-    if max is not None and min is not None:
-        scale = True
-        max = int(max)
-        min = int(min)
-
-    segment = False
-    if error is not None and error_win is not None and min_win is not None and max_merge is not None and std_scale is not None and stall_len is not None:
-        segment = True
-        if start is None:
-            start = 0
-        else:
-            start = int(start)
-        if end is None:
-            end = "all"
-        else:
-            end = int(end)
-        error = int(error)
-        error_win = int(error_win)
-        min_win = int(min_win)
-        max_merge = int(max_merge)
-        std_scale = float(std_scale)
-        stall_len = float(stall_len)
-
-    if height is not None and width is not None:
-        height = int(height)
-        width = int(width)
-    else:
-        height = 700
-        width = 1400
-
     reads = []
     sig = None
     segs = None
-    omitted = 0
 
     if not os.path.isfile(f5_path+"/data_"+type+".tsv"):
         return render_template("error.html")
@@ -163,44 +122,20 @@ def view():
                     sig = np.array([float(i) for i in l[4:]], dtype=float)
                 else:
                     sig = np.array([int(i) for i in l[4:]], dtype=int)
-                if scale:
-                    old = len(sig)
-                    sig = scale_outliers(sig, max, min)
-                    omitted = old - len(sig)
-                if segment:
-                    if end !="all":
-                        section = sig[start:end]
-                    else:
-                        section = sig[start:]
-                    segs = get_segs(section, error, error_win, min_win, max_merge, std_scale, stall_len)
+
     graph = dict()
     if sig is not None:
         global signal
         signal = sig
         print(signal)
         Thread(target=bk_worker).start()
-        #change_bk()
-        html_graph = view(sig, segs, type, read, fast5, height, width)
-        graph['html'] = Markup(html_graph)
-        graph['id'] = str(read)
-        graph['max'] = max
-        graph['min'] = min
-        graph['omitted'] = omitted
-        if segment:
-            if end != "all":
-                graph['start'] = start
-                graph['end'] = end
-            graph['error'] = error
-            graph['error_win'] = error_win
-            graph['min_win'] = min_win
-            graph['max_merge'] = max_merge
-            graph['std_scale'] = std_scale
-            graph['stall_len'] = stall_len
-        graph['height'] = height
-        graph['width'] = width
+        id = str(read)
 
         script = server_document('http://localhost:5006/bkapp')
-    return render_template("view_graphs.html", f5_path=f5_path, type=type, graph=graph, script=script, count=len(reads), reads=reads)
+        return render_template("view_graphs.html", f5_path=f5_path, type=type, id=id, script=script, count=len(reads), reads=reads)
+    else:
+        error = "The signal was unable to be found for "+read+" :(."
+        return render_template("error.html", error=error)
 
 @app.route("/delete")
 def delete():
@@ -295,59 +230,6 @@ def scale_outliers(sig, max, min):
     k = (sig > min) & (sig < max)
     return sig[k]
 
-def view(sig, segs, type, name, file, height, width):
-    '''
-    View the squiggle
-    '''
-
-    source = ColumnDataSource(data={
-        'signal'    : sig,
-        'position'  : list(range(0,len(sig)))
-    })
-
-    p = figure(plot_width=width, plot_height=height)
-
-    if type == 'raw':
-        title = "Raw signal for: "+name
-        p.yaxis.axis_label = "Current - Not scaled"
-    else:
-        title = "Signal for: "+name
-        p.yaxis.axis_label = "Current (pA)"
-
-    p.line(x='position',y='signal',line_width=2, source=source)
-    p.add_tools(HoverTool(
-        tooltips=[
-            ('signal', '@signal'),
-            ('position', '@position'),
-        ],
-        formatters={
-            'signal'    : 'printf',
-            'position'    : 'printf'
-        },
-        mode='vline'
-    ))
-    renderer = p.multi_line([[1,9]], [[5,5]], line_width=4, alpha=0.5, color='green')
-    draw_tool = FreehandDrawTool(renderers=[renderer])
-    p.add_tools(draw_tool)
-
-    src = ColumnDataSource({
-        'x':[1,1,1], 'y':[1,1,1], 'width':[1,1,1], 'height':[1,1,1]
-    })
-    box_renderer = p.rect('x', 'y', 'width', 'height', fill_alpha=0.4, fill_color='orange', line_color='orange', source=src)
-    box_draw_tool = BoxEditTool(renderers=[box_renderer], empty_value=1, num_objects = 5)
-    p.add_tools(box_draw_tool)
-
-    p.add_layout(Title(text=title), 'above')
-    p.add_layout(Title(text="File: "+file), 'above')
-
-    if segs:
-        for i, j in segs:
-            b = BoxAnnotation(left=i, right=j, fill_color='pink', fill_alpha=0.5)
-            p.add_layout(b)
-
-    html = file_html(p, CDN, title)
-    return html
-
 def get_segs(sig, error, error_win, min_win, max_merge, std_scale, stall_len):
     '''
     Get segments from signal
@@ -426,10 +308,13 @@ def get_segs(sig, error, error_win, min_win, max_merge, std_scale, stall_len):
 
 def bkapp(doc):
     global signal
+    global ut
+    global lt
+    global show_segs
+    show_segs = False
     ut = 0
     lt = 0
-    if signal is not None:
-        print(signal)
+    if signal.any():
         ut = max(signal)
         lt = min(signal)
         source = ColumnDataSource(data={
@@ -453,7 +338,7 @@ def bkapp(doc):
             mode='vline'
         ))
 
-        renderer = p.multi_line([[1,9]], [[5,5]], line_width=4, alpha=0.5, color='green')
+        renderer = p.multi_line([[1,1]], [[1,1]], line_width=4, alpha=0.5, color='green')
         draw_tool = FreehandDrawTool(renderers=[renderer])
         p.add_tools(draw_tool)
 
@@ -467,39 +352,32 @@ def bkapp(doc):
         ut_slider = Slider(start=lt, end=max(signal), value=max(signal), name='upper_thresh', step=1, title="Upper Threshold")
         lt_slider = Slider(start=min(signal), end=ut, value=min(signal), name='lower_thresh', step=1, title="Lower Threshold")
 
-        callback = CustomJS(args=dict(source=source, ut_slider=ut_slider, lt_slider=lt_slider, signal=signal), code="""
-        var name = cb_obj.name
+        def ut_callback(attr, old, new):
+            global signal
+            global ut
+            global lt
+            ut = new
+            new_signal = scale_outliers(signal, ut, lt)
+            source.data = {
+                        'signal'    : new_signal,
+                        'position'  : list(range(0,len(new_signal)))
+                        }
+            update_segs()
 
-        if(name == "upper_thresh"){
-            var upper = cb_obj.value;
-            var lower = lt_slider.value;
-        } else {
-            var upper = ut_slider.value;
-            var lower = cb_obj.value;
-        };
-        var new_signal = signal.filter(function(value, index, arr){
-            return value >= lower && value <= upper;
-        });
-        source.data = {
-                    'signal'    : new_signal,
-                    'position'  : [...Array(new_signal.length).keys()]
-                    }
-        source.change.emit();
-        """)
+        def lt_callback(attr, old, new):
+            global signal
+            global ut
+            global lt
+            lt = new
+            new_signal = scale_outliers(signal, ut, lt)
+            source.data = {
+                        'signal'    : new_signal,
+                        'position'  : list(range(0,len(new_signal)))
+                        }
+            update_segs()
 
-        ut_slider.js_on_change('value', callback)
-        lt_slider.js_on_change('value', callback)
-
-        err_slider = Slider(start=0, end=20, value=5, name='error', step=1, title="Allowable Error")
-        err_win_slider = Slider(start=0, end=100, value=50, name='err_win', step=1, title="Error Window Size")
-        min_win_slider = Slider(start=0, end=500, value=150, name='min_win', step=1, title="Minimum Window Size")
-        max_merge_slider = Slider(start=0, end=100, value=50, name='max_merge', step=1, title="Max Merge Distance")
-        stdev_scale_slider = Slider(start=0, end=5, value=0.75, name='stdev_scale', step=0.01, title="Standard Deviation Scale Factor")
-        stall_len_slider = Slider(start=0, end=5, value=0.25, name='stall_len', step=0.01, title="Stall Length")
-
-        #segment_callback = CustomJS(args=dict(err_slider=err_slider, err_win_slider=err_win_slider, min_win_slider=min_win_slider, maxe_merge_slider=max_merge_slider, stdev_scale=stdev_scale, stall_len=stall_len, signal=signal), code="""
-        #console.log(cb_obj.value)
-        #""")
+        ut_slider.on_change('value', ut_callback)
+        lt_slider.on_change('value', lt_callback)
 
         segments = ColumnDataSource(data={
             'top'     : [1,1],
@@ -508,7 +386,30 @@ def bkapp(doc):
             'right'   : [1,1]
             })
 
-        p.quad(top='top',bottom='bottom',left='left',right='right',source=segments,fill_alpha=0.5,fill_color='pink')
+        button = Toggle(label="View Segments", sizing_mode="scale_width")
+
+        def segment_handler(new):
+            global show_segs
+            show_segs = new
+            if not new:
+                segments.data = {
+                    'top'     : [1,1],
+                    'bottom'  : [1,1],
+                    'left'    : [1,1],
+                    'right'   : [1,1]
+                            }
+            update_segs()
+
+        button.on_click(segment_handler)
+
+        err_slider = Slider(start=0, end=20, value=5, name='error', step=1, title="Allowable Error")
+        err_win_slider = Slider(start=0, end=100, value=50, name='err_win', step=1, title="Error Window Size")
+        min_win_slider = Slider(start=0, end=500, value=150, name='min_win', step=1, title="Minimum Window Size")
+        max_merge_slider = Slider(start=0, end=100, value=50, name='max_merge', step=1, title="Max Merge Distance")
+        stdev_scale_slider = Slider(start=0, end=5, value=0.75, name='stdev_scale', step=0.01, title="Standard Deviation Scale Factor")
+        stall_len_slider = Slider(start=0, end=5, value=0.25, name='stall_len', step=0.01, title="Stall Length")
+
+        p.quad(top='top',bottom='bottom',left='left',right='right',source=segments,fill_alpha=0.5,fill_color='pink',line_color='pink')
 
         def err_callback(atrr, old, new):
             global err
@@ -541,19 +442,37 @@ def bkapp(doc):
             update_segs()
 
         def update_segs():
+            #need to take into account the modified signal- somehow access it?
             global err
             global err_win
             global min_win
             global max_merge
             global stdev_scale
             global stall_len
-            left, right = get_segs(signal, err, err_win, min_win, max_merge, stdev_scale, stall_len)
-            segments.data = {
-                        'top'     :  np.full(len(left),700),
-                        'bottom'  :  np.full(len(left),0),
-                        'left'    :  left,
-                        'right'   :  right
-                        }
+            global ut
+            global lt
+            global show_segs
+            left = None
+            right = None
+            if show_segs:
+                sig = scale_outliers(signal, ut, lt)
+                if sig.any():
+                    left, right = get_segs(sig, err, err_win, min_win, max_merge, stdev_scale, stall_len)
+                if left is not None and right is not None:
+                    segments.data = {
+                                'top'     :  np.full(len(left),1000),
+                                'bottom'  :  np.full(len(left),0),
+                                'left'    :  left,
+                                'right'   :  right
+                                }
+                else:
+                    segments.data = {
+                        'top'     : [1,1],
+                        'bottom'  : [1,1],
+                        'left'    : [1,1],
+                        'right'   : [1,1]
+                                }
+
 
         err_slider.on_change('value', err_callback)
         err_win_slider.on_change('value', err_win_callback)
@@ -562,7 +481,7 @@ def bkapp(doc):
         stdev_scale_slider.on_change('value', stdev_scale_callback)
         stall_len_slider.on_change('value', stall_len_callback)
 
-        doc.add_root(row(column(ut_slider, lt_slider, err_slider, err_win_slider, min_win_slider, max_merge_slider, stdev_scale_slider, stall_len_slider), p))
+        doc.add_root(row(column(Spacer(height=10), ut_slider, lt_slider, Spacer(height=10), button, err_slider, err_win_slider, min_win_slider, max_merge_slider, stdev_scale_slider, stall_len_slider, Spacer(height=10), sizing_mode="stretch_height"), p, sizing_mode="stretch_both"))
         doc.theme = Theme(filename="theme.yaml")
 
 def bk_worker():
@@ -575,9 +494,5 @@ def bk_worker():
 
 
 if __name__ == "__main__":
-    print('Opening single process Flask app with embedded Bokeh application on http://localhost:8000/')
-    print()
-    print('Multiple connections may block the Bokeh app in this configuration!')
-    print('See "flask_gunicorn_embed.py" for one way to run multi-process')
-
+    print('Please open the page http://127.0.0.1:8080 to access the SquiggleKit Web Application')
     app.run(port="8080", debug=True)

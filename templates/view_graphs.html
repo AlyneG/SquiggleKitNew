@@ -33,20 +33,6 @@
                 window.location.replace("/delete?f5_path={{f5_path}}&type={{type}}")
             }
 
-            function modalClear(){
-                document.getElementById("clear_modal").classList.add("is-active")
-            }
-
-            function cancelClear(){
-                document.getElementById("clear_modal").classList.remove("is-active")
-            }
-
-            function clearGraph(){
-                document.getElementById("clear_modal").classList.remove("is-active")
-                document.getElementById("clear_button").classList.add("is-loading")
-                window.location.reload()
-            }
-
             function modalClearAll(){
                 document.getElementById("clear_all_modal").classList.add("is-active")
             }
@@ -58,18 +44,7 @@
             function clearGraphAll(){
                 document.getElementById("clear_all_modal").classList.remove("is-active")
                 document.getElementById("clear_all_button").classList.add("is-loading")
-                new_url = window.location.href
-                new_url = new_url.replace(/\&start=[0-9]*/g, "")
-                new_url = new_url.replace(/\&end=[0-9]*/g, "")
-                new_url = new_url.replace(/\&error=[0-9]*/g, "")
-                new_url = new_url.replace(/\&error_win=[0-9]*/g, "")
-                new_url = new_url.replace(/\&min_win=[0-9]*/g, "")
-                new_url = new_url.replace(/\&max_merge=[0-9]*/g, "")
-                new_url = new_url.replace(/\&stdev_scale=[0-9]*\.[0-9]*/g, "")
-                new_url = new_url.replace(/\&stall_len=[0-9]*\.[0-9]*/g, "")
-                new_url = new_url.replace(/\&max=[0-9]*/g, "")
-                new_url = new_url.replace(/\&min=[0-9]*/g, "")
-                window.location.replace(new_url)
+                window.location.reload(true)
             }
 
             function modalHelp(){
@@ -80,172 +55,6 @@
                 document.getElementById("help_modal").classList.remove("is-active")
             }
 
-            function updateModal(){
-                document.getElementById("update_modal").classList.add("is-active")
-            }
-
-            function cancelUpdate(){
-                document.getElementById("update_modal").classList.remove("is-active")
-            }
-
-            function update(){
-                document.getElementById("update_modal").classList.remove("is-active")
-                max = document.getElementById("max").value
-                min = document.getElementById("min").value
-                if (!(max && min)) {
-                    document.getElementById("threshold_error").innerHTML="Threshold values invalid. Make sure that all fields have been filled in."
-                    document.getElementById("threshold_error").style.display="block"
-                } else if ((parseInt(max) <= parseInt(min))||(parseInt(max) < 0)||(parseInt(min) < 0)){
-                    document.getElementById("threshold_error").innerHTML="Threshold values invalid. Max value cannot be lower than Min value and both must be >= 0."
-                    document.getElementById("threshold_error").style.display="block"
-                } else {
-                    new_url = window.location.href
-                    new_url = new_url.replace(/\&max=[0-9]*/g, "")
-                    new_url = new_url.replace(/\&min=[0-9]*/g, "")
-                    window.location.replace(new_url.concat("&max=").concat(max).concat("&min=").concat(min))
-                }
-            }
-
-            function reset(){
-                new_url = window.location.href
-                new_url = new_url.replace(/\&max=[0-9]*/g, "")
-                new_url = new_url.replace(/\&min=[0-9]*/g, "")
-                window.location.replace(new_url)
-            }
-
-            function hsModal(){
-                document.getElementById("hs_modal").classList.add("is-active")
-            }
-
-            function cancelHS(){
-                document.getElementById("hs_modal").classList.remove("is-active")
-            }
-
-            function showHSRegions(){
-                document.getElementById("hs_modal").classList.remove("is-active")
-                //remove all previous data
-                new_url = window.location.href
-                new_url = new_url.replace(/\&start=[0-9]*/g, "")
-                new_url = new_url.replace(/\&end=[0-9]*/g, "")
-                new_url = new_url.replace(/\&error=[0-9]*/g, "")
-                new_url = new_url.replace(/\&error_win=[0-9]*/g, "")
-                new_url = new_url.replace(/\&min_win=[0-9]*/g, "")
-                new_url = new_url.replace(/\&max_merge=[0-9]*/g, "")
-                new_url = new_url.replace(/\&stdev_scale=[0-9]*\.[0-9]*/g, "")
-                new_url = new_url.replace(/\&stall_len=[0-9]*\.[0-9]*/g, "")
-
-                section = document.getElementsByName("section")
-                for (i=0, length=section.length; i< length; i++){
-                    if (section[i].checked) {
-                        section = section[i].value
-                        break
-                    }
-                }
-
-                if(section != "All"){
-                    start = document.getElementById("start").value
-                    end = document.getElementById("end").value
-                    if(!(start&&end)){
-                        document.getElementById("section_error").innerHTML="Please fill in the Start and End positions to select a section."
-                        document.getElementById("section_error").style.display="block"
-                        return
-                    } else if ((parseInt(end) <= parseInt(start))||(parseInt(end) <= 0)||(parseInt(start) < 0)){
-                        document.getElementById("section_error").innerHTML="Start must be smaller than End value, and >= 0. End must be > 0."
-                        document.getElementById("section_error").style.display="block"
-                        return
-                    }
-                    new_url = new_url.concat("&start=").concat(start).concat("&end=").concat(end)
-                }
-
-                error = document.getElementById("allow_error").value
-                error_win = document.getElementById("window").value
-                min_win = document.getElementById("min_window").value
-                max_merge = document.getElementById("merge").value
-                stdev_scale = document.getElementById("stdev_scale").value
-                stall_len = document.getElementById("stall_len").value
-
-                if (!(error&&error_win&&min_win&&max_merge&&stdev_scale&&stall_len)){
-                    document.getElementById("segmenter_error").innerHTML="Please fill in all fields."
-                    document.getElementById("segmenter_error").style.display="block"
-                    return
-                } else if((parseInt(error) < 0)||(parseInt(error_win) < 0)||(parseInt(min_win) < 0)||(parseInt(max_merge) < 0)||(parseInt(stdev_scale) < 0)||(parseInt(stall_len<0))) {
-                    document.getElementById("segmenter_error").innerHTML="Values invalid. All values must be >=0."
-                    document.getElementById("segmenter_error").style.display="block"
-                    return
-                }
-
-                //if valid, redirect
-                window.location.replace(new_url.concat("&error=").concat(error).concat("&error_win=").concat(error_win)
-                                        .concat("&min_win=").concat(min_win).concat("&max_merge=").concat(max_merge)
-                                        .concat("&stdev_scale=").concat(stdev_scale).concat("&stall_len=").concat(stall_len))
-            }
-
-            function showSectionParams(){
-                document.getElementById("section_params").style.display="block"
-            }
-
-            function hideSectionParams(){
-                document.getElementById("section_params").style.display="none"
-            }
-
-            function setDefaults(){
-                document.getElementById("All").checked = true
-                document.getElementById("section_params").style.display="none"
-                document.getElementById("allow_error").value = 5
-                document.getElementById("window").value = 50
-                document.getElementById("min_window").value = 150
-                document.getElementById("merge").value = 50
-                document.getElementById("stdev_scale").value = 0.75
-                document.getElementById("stall_len").value = 0.25
-            }
-
-            function resetSegmenter(){
-                new_url = window.location.href
-                new_url = new_url.replace(/\&start=[0-9]*/g, "")
-                new_url = new_url.replace(/\&end=[0-9]*/g, "")
-                new_url = new_url.replace(/\&error=[0-9]*/g, "")
-                new_url = new_url.replace(/\&error_win=[0-9]*/g, "")
-                new_url = new_url.replace(/\&min_win=[0-9]*/g, "")
-                new_url = new_url.replace(/\&merge=[0-9]*/g, "")
-                new_url = new_url.replace(/\&stdev_scale=[0-9]*\.[0-9]*/g, "")
-                new_url = new_url.replace(/\&stall_len=[0-9]*\.[0-9]*/g, "")
-                new_url = new_url.replace(/\&height=[0-9]*/g, "")
-                new_url = new_url.replace(/\&width=[0-9]*/g, "")
-                window.location.replace(new_url)
-            }
-
-            function updateDimensionModal(){
-                document.getElementById("dimension_modal").classList.add("is-active")
-            }
-
-            function cancelUpdateDimension(){
-                document.getElementById("dimension_modal").classList.remove("is-active")
-            }
-
-            function updateDimensions(){
-                document.getElementById("dimension_modal").classList.remove("is-active")
-                height = document.getElementById("height").value
-                width = document.getElementById("width").value
-                if (!(height && width)) {
-                    document.getElementById("dimension_error").innerHTML="Dimension values invalid. Make sure that all fields have been filled in."
-                    document.getElementById("dimension_error").style.display="block"
-                } else if ((parseInt(height) <= 0)||(parseInt(width) <= 0)){
-                    document.getElementById("dimension_error").innerHTML="Dimension values invalid. Both height and width must be > 0."
-                    document.getElementById("dimension_error").style.display="block"
-                } else {
-                    new_url = window.location.href
-                    new_url = new_url.replace(/\&height=[0-9]*/g, "")
-                    new_url = new_url.replace(/\&width=[0-9]*/g, "")
-                    window.location.replace(new_url.concat("&height=").concat(height).concat("&width=").concat(width))
-                }
-            }
-
-            function resetDimensions(){
-                new_url = window.location.href
-                new_url = new_url.replace(/\&height=[0-9]*/g, "")
-                new_url = new_url.replace(/\&width=[0-9]*/g, "")
-                window.location.replace(new_url)
-            }
         </script>
     </head>
     <body>
@@ -267,28 +76,11 @@
         </div>
     </div>
 
-    <div class="modal" id="clear_modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Confirm Clear Graph Annotations</p>
-                <button class="delete" aria-label="close" onClick="cancelClear()"></button>
-            </header>
-            <section class="modal-card-body">
-                Are you sure you would like to clear the graph annotations? This will remove all the current drawings.
-            </section>
-            <footer class="modal-card-foot">
-                <button class="button is-success" onClick="clearGraph()">Yes</button>
-                <button class="button" onClick="cancelClear()">Cancel</button>
-            </footer>
-        </div>
-    </div>
-
     <div class="modal" id="clear_all_modal">
         <div class="modal-background"></div>
         <div class="modal-card">
             <header class="modal-card-head">
-                <p class="modal-card-title">Confirm Clear Graph</p>
+                <p class="modal-card-title">Confirm Reset Graph</p>
                 <button class="delete" aria-label="close" onClick="cancelClearAll()"></button>
             </header>
             <section class="modal-card-body">
@@ -349,57 +141,6 @@
         </div>
     </div>
 
-    <div class="modal" id="update_modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Confirm Threshold Change</p>
-                <button class="delete" aria-label="close" onClick=cancelUpdate()></button>
-            </header>
-            <section class="modal-card-body">
-                Are you sure you would like to update the threshold? This will delete all annotations you have made and reset the graph.
-            </section>
-            <footer class="modal-card-foot">
-                <button class="button is-success" onClick="update()">Yes</button>
-                <button class="button" onClick="cancelUpdate()">Cancel</button>
-            </footer>
-        </div>
-    </div>
-
-    <div class="modal" id="hs_modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Confirm Show HS Regions</p>
-                <button class="delete" aria-label="close" onClick=cancelHS()></button>
-            </header>
-            <section class="modal-card-body">
-                Are you sure you would like view/change the HS regions? This will delete all annotations you have made and reset the graph.
-            </section>
-            <footer class="modal-card-foot">
-                <button class="button is-success" onClick="showHSRegions()">Yes</button>
-                <button class="button" onClick="cancelHS()">Cancel</button>
-            </footer>
-        </div>
-    </div>
-
-    <div class="modal" id="dimension_modal">
-        <div class="modal-background"></div>
-        <div class="modal-card">
-            <header class="modal-card-head">
-                <p class="modal-card-title">Confirm Dimension Change</p>
-                <button class="delete" aria-label="close" onClick=cancelUpdateDimension()></button>
-            </header>
-            <section class="modal-card-body">
-                Are you sure you would like to change the graph dimensions? This will delete all annotations you have made and reset the graph.
-            </section>
-            <footer class="modal-card-foot">
-                <button class="button is-success" onClick="updateDimensions()">Yes</button>
-                <button class="button" onClick="cancelUpdateDimension()">Cancel</button>
-            </footer>
-        </div>
-    </div>
-
         <section class="section has-text-centered">
             <a href="/"><h1 class="title has-text-link">SquiggleKit Web</h1></a>
             <h2 class="subtitle">A web application to help with the display and analysis of Oxford Nanopore raw signal data.</h2>
@@ -417,7 +158,7 @@
                       <select id="read" class="selectpicker" style="width:300px">
                           <option value=""></option>
                           {% for read in reads %}
-                              {% if read == graph.id %}
+                              {% if read == id %}
                                   <option value={{read}} selected>{{read}}</option>
                               {% else %}
                                   <option value={{read}}>{{read}}</option>
@@ -438,148 +179,12 @@
             <input class="button is-rounded is-danger" type="submit" value="Delete All Graphs" onClick="modal()">
             <input class="button is-rounded is-success" type="submit" value="Help" onClick="modalHelp()">
         </section>
-        {% if graph.id|length %}
+        {% if id|length %}
         <section class="section has-text-centered">
-            <button class="button is-rounded is-warning" id="clear_button" onClick="modalClear()">Clear Annotations</button>
             <button class="button is-rounded" id="clear_all_button" onClick="modalClearAll()">Reset</button>
             <br><br>
             <section>
-            <!--{{graph.html|safe}}-->
             {{ script|safe }}
-            </section>
-            <br><br>
-            <h1 class="has-text-link title is-5">ANALYSIS TOOLS</h1>
-            <section class="columns">
-                <!--section class="column is-one-fifth">
-                    <h1 class="has-text-link subtitle is-6">THRESHOLD</h1>
-                    <div class="field">
-                        <label class="label">Max</label>
-                        <div class="control">
-                            <input id="max" type="number" min="0" value={{graph.max}}><br>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label class="label">Min</label>
-                        <div class="control">
-                            <input id="min" type="number" min="0" value={{graph.min}}>
-                        </div>
-                    </div>
-                    <button class="button is-info is-small" onClick=updateModal()>Set</button> <button class="button is-small" onClick=reset()>Reset</button> <br><br>
-                    <p id="threshold_error" class="help has-text-danger" style="display: none"></p>
-                    <small>{{graph.omitted}} point/s have been omitted due to the threshold</small><br><br>
-                </section-->
-                <section class="column is-three-fifths">
-                    <h1 class="has-text-link subtitle is-6">VIEW HOMOPOLYMER/STALL REGIONS</h1>
-                    <section class="columns">
-                        <section class="column">
-                            <div class="field">
-                                <strong>Section</strong>
-                                <div class="control">
-                                    <label class="radio">
-                                    {% if graph.end %}
-                                    <input type="radio" name="section" onClick="hideSectionParams()" value="All" id="All">
-                                    All
-                                    </label>
-                                    <label class="radio">
-                                    <input type="radio" name="section" onClick="showSectionParams()" value="Selected" id="Selected" checked>
-                                    Selected
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="field" id="section_params" style="display: block">
-                                    {% else %}
-                                    <input type="radio" name="section" onClick="hideSectionParams()" value="All" id="All" checked>
-                                    All
-                                    </label>
-                                    <label class="radio">
-                                    <input type="radio" name="section" onClick="showSectionParams()" value="Selected" id="Selected">
-                                    Selected
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="field" id="section_params" style="display: none">
-                                    {% endif %}
-
-                                <label class="label">Start</label>
-                                <div class="control">
-                                    <input id="start" type="number" min=0 step=1 value={{graph.start}}>
-                                </div>
-                                <label class="label">End</label>
-                                <div class="control">
-                                    <input id="end" type="number" min=0 step=1 value={{graph.end}}>
-                                </div>
-                                <p id="section_error" class="help has-text-danger" style="display: none"></p>
-                            </div>
-                        </section>
-                        <section class="column">
-                            <div class="field">
-                                <label class="label">Allowable Error</label>
-                                <div class="control">
-                                    <input id="allow_error" type="number" min=0 step=1 value={{graph.error}}>
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label class="label">Error Window Size</label>
-                                <div class="control">
-                                    <input id="window" type="number" min=0 step=1 value={{graph.error_win}}>
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label class="label">Min Window Size</label>
-                                <div class="control">
-                                    <input id="min_window" type="number" min=0 step=1 value={{graph.min_win}}>
-                                </div>
-                            </div>
-                        </section>
-                        <section class="column">
-                            <div class="field">
-                                <label class="label">Max Merge Distance</label>
-                                <div class="control">
-                                    <input id="merge" type="number" min=0 step=1 value={{graph.max_merge}}>
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label class="label">STDev Scale Factor</label>
-                                <div class="control">
-                                    <input id="stdev_scale" type="number" min=0 step=0.01 value={{graph.std_scale}}>
-                                </div>
-                            </div>
-                            <div class="field">
-                                <label class="label">Stall Length</label>
-                                <div class="control">
-                                    <input id="stall_len" type="number" min=0 step=0.01 value={{graph.stall_len}}>
-                                </div>
-                            </div>
-                            <!--help="Minimum percentage of minimum window segment for initial stall segment")-->
-                        </section>
-                    </section>
-                    <div class="field">
-                        <div class="control">
-                            <button class="button is-small is-info" onClick=hsModal()>View</button>
-                            <button class="button is-small is-success" onClick=setDefaults()>Default</button>
-                            <button class="button is-small" onClick=resetSegmenter()>Reset</button>
-                        </div>
-                    </div>
-                    <p id="segmenter_error" class="help has-text-danger" style="display: none"></p>
-                </section>
-                <div class="is-divider-vertical"></div>
-                <section class="column is-one-fifth">
-                    <h1 class="has-text-link subtitle is-6">PLOT DIMENSIONS</h1>
-                    <div class="field">
-                        <label class="label">Width</label>
-                        <div class="control">
-                            <input id="width" type="number" min="0" value={{graph.width}}><br>
-                        </div>
-                    </div>
-                    <div class="field">
-                        <label class="label">Height</label>
-                        <div class="control">
-                            <input id="height" type="number" min="0" value={{graph.height}}>
-                        </div>
-                    </div>
-                    <button class="button is-info is-small" onClick=updateDimensionModal()>Set</button> <button class="button is-small" onClick=resetDimensions()>Reset</button> <br><br>
-                    <p id="threshold_error" class="help has-text-danger" style="display: none"></p>
-                </section>
             </section>
         </section>
         {% endif %}
